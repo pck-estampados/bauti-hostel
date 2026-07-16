@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useOperations } from "../components/operations-provider";
-import { AdminPageHeader, roomStatusLabel, StatusPill } from "../components/ui";
+import { AdminPageHeader, EmptyState, roomStatusLabel, StatusPill } from "../components/ui";
 import { formatGuestName } from "../lib/operations";
 import type { RoomStatus } from "../lib/types";
 
 export default function RoomsNowPage() {
-  const { state, changeRoomStatus } = useOperations();
+  const { state, mode, changeRoomStatus } = useOperations();
   const [message, setMessage] = useState("");
   const activeByRoom = new Map(state.reservations.filter((item) => item.roomId && item.status === "accommodated").map((item) => [item.roomId, item]));
 
@@ -18,14 +18,14 @@ export default function RoomsNowPage() {
 
   return (
     <>
-      <AdminPageHeader eyebrow="Operación en tiempo real" title="Habitaciones ahora" description="Una lectura rápida del estado operativo. El inventario mostrado es únicamente de prueba." />
+      <AdminPageHeader eyebrow="Operación en tiempo real" title="Habitaciones ahora" description={mode === "demo" ? "Una lectura rápida del estado operativo. El inventario mostrado es únicamente de prueba." : "Una lectura rápida del estado operativo del inventario real."} />
       {message ? <p className="admin-feedback" role="status">{message}</p> : null}
-      <div className="admin-room-grid">
+      {state.rooms.length ? <div className="admin-room-grid">
         {state.rooms.map((room) => {
           const reservation = activeByRoom.get(room.id); const guest = reservation ? state.guests.find((item) => item.id === reservation.primaryGuestId) : undefined;
           return <article className={`admin-room-card admin-room-card--${room.status}`} key={room.id}><div className="admin-room-card__top"><span>{room.code}</span><StatusPill status={room.status}>{roomStatusLabel(room.status)}</StatusPill></div><h2>{room.displayName}</h2>{reservation && guest ? <div className="admin-room-guest"><strong>{formatGuestName(guest.firstName, guest.lastName)}</strong><span>{reservation.guestCount} persona{reservation.guestCount === 1 ? "" : "s"} · salida {reservation.checkOut}</span></div> : <p>{room.statusNote ?? (room.status === "ready" ? "Lista para recibir huéspedes." : "Sin estadía activa asignada.")}</p>}<div className="admin-room-card__actions">{room.status === "pending_cleaning" ? <button onClick={() => change(room.id, "cleaning")}>Iniciar limpieza</button> : null}{room.status === "cleaning" ? <button onClick={() => change(room.id, "clean")}>Marcar limpia</button> : null}{room.status === "clean" ? <button onClick={() => change(room.id, "ready")}>Marcar lista</button> : null}{room.status === "ready" || room.status === "available" ? <button onClick={() => change(room.id, "blocked")}>Bloquear</button> : null}{room.status === "blocked" ? <button onClick={() => change(room.id, "ready")}>Desbloquear</button> : null}</div></article>;
         })}
-      </div>
+      </div> : <EmptyState title="Sin habitaciones configuradas" description="Todavía no existe inventario real para operar. Configurá tipos, habitaciones y camas sin cargar reservas ficticias." action={{ href: "/admin/configuracion#habitaciones", label: "Configurar inventario" }} />}
     </>
   );
 }

@@ -11,7 +11,9 @@ test("keeps secrets server-only and requires an explicit application mode", asyn
   ]);
   assert.match(example, /^APP_MODE=demo$/m);
   assert.match(example, /^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=/m);
-  assert.match(example, /^SUPABASE_SECRET_KEY=/m);
+  assert.match(example, /^# SUPABASE_SECRET_KEY=/m);
+  assert.match(example, /^# SUPABASE_SERVICE_ROLE_KEY=/m);
+  assert.doesNotMatch(example, /^(?:SUPABASE_SECRET_KEY|SUPABASE_SERVICE_ROLE_KEY)=/m);
   assert.doesNotMatch(example, /NEXT_PUBLIC_(?:SUPABASE_)?(?:SECRET|SERVICE_ROLE)/);
   assert.match(gitignore, /^\.env\*$/m);
   assert.match(envModule, /assertProductionEnvironment/);
@@ -78,4 +80,35 @@ test("routes production operations through validated server-side adapters", asyn
   assert.match(repository, /\.rpc\("create_walk_in"/);
   assert.match(proxy, /auth\.getClaims\(\)/);
   assert.doesNotMatch(proxy, /auth\.getSession\(\)/);
+});
+
+test("rejects inactive or roleless staff and protects configuration with session RLS", async () => {
+  const [session, login, accessRoute, configurationRoute, repository, client, security] = await Promise.all([
+    read("app/lib/auth/staff-session.ts"),
+    read("app/acceso-interno/page.tsx"),
+    read("app/api/auth/staff-access/route.ts"),
+    read("app/api/admin/configuration/route.ts"),
+    read("app/admin/data/supabase-configuration-repository.ts"),
+    read("app/admin/configuracion/configuration-console.tsx"),
+    read("supabase/migrations/202607150002_rbac_and_rls.sql"),
+  ]);
+
+  assert.match(session, /profile\.status !== "active"/);
+  assert.match(session, /if \(!roles\.length\) return null/);
+  assert.match(session, /role_permissions/);
+  assert.match(login, /\/api\/auth\/staff-access/);
+  assert.match(login, /supabase\.auth\.signOut\(\)/);
+  assert.match(accessRoute, /status: 403/);
+  assert.match(configurationRoute, /assertSameOrigin/);
+  assert.match(configurationRoute, /requirePermissions\(staff, "settings\.manage"\)/);
+  assert.match(configurationRoute, /requirePermissions\(staff, "rooms\.inventory_manage"\)/);
+  assert.match(configurationRoute, /requirePermissions\(staff, "staff\.manage", "rbac\.manage"\)/);
+  assert.match(repository, /from\("settings"\)/);
+  assert.match(repository, /from\("room_types"\)/);
+  assert.match(repository, /from\("user_roles"\)/);
+  assert.doesNotMatch(repository, /createSupabaseAdminClient|SUPABASE_(?:SECRET|SERVICE_ROLE)/);
+  assert.doesNotMatch(client, /SUPABASE_(?:SECRET|SERVICE_ROLE)|createSupabaseAdminClient/);
+  assert.match(security, /create policy settings_manage[\s\S]*private\.has_permission\('settings\.manage'\)/);
+  assert.match(security, /create policy rooms_manage[\s\S]*private\.has_permission\('rooms\.inventory_manage'\)/);
+  assert.match(security, /create policy user_roles_management_all[\s\S]*private\.has_permission\('rbac\.manage'\)/);
 });

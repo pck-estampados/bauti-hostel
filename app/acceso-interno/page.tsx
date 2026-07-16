@@ -20,6 +20,16 @@ export default function StaffLoginPage() {
       const supabase = createSupabaseBrowserClient();
       const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
       if (authError) throw authError;
+      const accessResponse = await fetch("/api/auth/staff-access", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (!accessResponse.ok) {
+        await supabase.auth.signOut();
+        setError("Tu cuenta existe, pero el perfil todavía no está activo o no tiene un rol interno habilitado.");
+        setSubmitting(false);
+        return;
+      }
       const returnTo = searchParams.get("returnTo");
       window.location.assign(returnTo?.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/admin");
     } catch {

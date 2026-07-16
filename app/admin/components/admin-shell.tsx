@@ -12,6 +12,7 @@ const navigation = [
   { href: "/admin/reservas", label: "Reservas", code: "RE" },
   { href: "/admin/pagos/pendientes", label: "Pagos y saldos", code: "PA" },
   { href: "/admin/notas", label: "Notas internas", code: "NO" },
+  { href: "/admin/configuracion", label: "Configuración", code: "CO" },
 ];
 
 function AdminNavigation({ mobile = false }: { mobile?: boolean }) {
@@ -35,10 +36,12 @@ export function AdminShell({
   children,
   userName,
   mode,
+  userRoles = [],
 }: {
   children: ReactNode;
   userName: string;
   mode: "demo" | "production";
+  userRoles?: string[];
 }) {
   const { resetDemo } = useOperations();
   return (
@@ -71,7 +74,7 @@ export function AdminShell({
           </div>
           <div className="admin-user">
             <span>{userName.slice(0, 1).toUpperCase()}</span>
-            <div><strong>{userName}</strong><small>{mode === "demo" ? "Recepción · demo" : "Equipo interno"}</small></div>
+            <div><strong>{userName}</strong><small>{mode === "demo" ? "Recepción · demo" : userRoles.join(", ") || "Equipo interno"}</small></div>
           </div>
         </header>
 

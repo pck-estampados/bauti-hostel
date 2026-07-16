@@ -6,7 +6,7 @@ import { AdminPageHeader, EmptyState, formatCurrency, formatDate, reservationSta
 import { dashboardSnapshot, formatGuestName } from "./lib/operations";
 
 export default function AdminDashboardPage() {
-  const { state } = useOperations();
+  const { state, mode } = useOperations();
   const snapshot = dashboardSnapshot(state);
   const guest = (id: string) => state.guests.find((item) => item.id === id);
   const room = (id?: string) => state.rooms.find((item) => item.id === id);
@@ -25,7 +25,7 @@ export default function AdminDashboardPage() {
       <AdminPageHeader
         eyebrow="Hoy · operación en curso"
         title="Todo lo importante, a primera vista."
-        description="Llegadas, salidas, ocupación y cobros pendientes del entorno de prueba."
+        description={mode === "demo" ? "Llegadas, salidas, ocupación y cobros pendientes del entorno de prueba." : "Llegadas, salidas, ocupación y cobros pendientes de la operación real."}
         actions={<><Link className="admin-button admin-button--primary" href="/admin/walk-in">Registrar ingreso sin reserva</Link><Link className="admin-button admin-button--secondary" href="/admin/reservas/nueva">Nueva reserva</Link></>}
       />
 
@@ -53,7 +53,7 @@ export default function AdminDashboardPage() {
           {snapshot.arrivals.length ? <div className="admin-record-list">{snapshot.arrivals.map((reservation) => {
             const person = guest(reservation.primaryGuestId); const assignedRoom = room(reservation.roomId);
             return <article className="admin-record" key={reservation.id}><div className="admin-avatar">{person?.firstName.slice(0,1)}</div><div className="admin-record__main"><strong>{person ? formatGuestName(person.firstName, person.lastName) : "Sin huésped"}</strong><span>{reservation.guestCount} personas · {assignedRoom?.displayName ?? "Sin habitación"} · {reservation.expectedArrival ?? "Hora no informada"}</span></div><StatusPill status={reservation.paymentStatus}>{reservationStatusLabel(reservation.status)}</StatusPill><Link className="admin-button admin-button--compact" href={`/admin/check-in?reservation=${reservation.id}`}>Check-in</Link></article>;
-          })}</div> : <EmptyState title="Sin llegadas pendientes" description="No hay check-ins pendientes para hoy en los datos de prueba." />}
+          })}</div> : <EmptyState title="Sin llegadas pendientes" description={mode === "demo" ? "No hay check-ins pendientes para hoy en los datos de prueba." : "No hay check-ins pendientes para hoy."} />}
         </section>
 
         <aside className="admin-panel admin-alert-panel">
@@ -78,8 +78,8 @@ export default function AdminDashboardPage() {
       </div>
 
       <section className="admin-section admin-room-strip">
-        <div className="admin-section-heading"><div><p>Estado del inventario de prueba</p><h2>Habitaciones ahora</h2></div><Link href="/admin/habitaciones">Abrir vista completa →</Link></div>
-        <div>{state.rooms.map((item) => <article key={item.id}><span>{item.code}</span><strong>{item.displayName}</strong><StatusPill status={item.status}>{roomStatusLabel(item.status)}</StatusPill></article>)}</div>
+        <div className="admin-section-heading"><div><p>{mode === "demo" ? "Estado del inventario de prueba" : "Estado del inventario real"}</p><h2>Habitaciones ahora</h2></div><Link href="/admin/habitaciones">Abrir vista completa →</Link></div>
+        {state.rooms.length ? <div className="admin-room-strip__grid">{state.rooms.map((item) => <article key={item.id}><span>{item.code}</span><strong>{item.displayName}</strong><StatusPill status={item.status}>{roomStatusLabel(item.status)}</StatusPill></article>)}</div> : <EmptyState title="Sin habitaciones configuradas" description="El inventario está vacío. Creá las habitaciones reales desde Configuración antes de operar." action={{ href: "/admin/configuracion#habitaciones", label: "Ir a configuración" }} />}
       </section>
     </>
   );

@@ -21,7 +21,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     const displayName = "Recepción de prueba";
     return (
       <OperationsProvider actor={displayName} mode="demo" initialState={createDemoOperationsState()}>
-        <AdminShell mode="demo" userName={displayName}>{children}</AdminShell>
+        <AdminShell mode="demo" userName={displayName} userRoles={["demo"]}>{children}</AdminShell>
       </OperationsProvider>
     );
   }
@@ -33,7 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <OperationsProvider actor={user.displayName} mode="production" initialState={initialState}>
-      <AdminShell mode="production" userName={user.displayName}>{children}</AdminShell>
+      <AdminShell mode="production" userName={user.displayName} userRoles={user.roles}>{children}</AdminShell>
     </OperationsProvider>
   );
 }

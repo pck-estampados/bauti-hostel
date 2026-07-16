@@ -91,7 +91,10 @@ function isSecureSiteUrl(value: string): boolean {
 export function assertProductionEnvironment(): void {
   if (getAppMode() !== "production") return;
 
-  getServerSupabaseConfig();
+  // El panel operativo trabaja con la sesión del usuario y RLS. La clave privada
+  // solo se exige cuando una función concreta utiliza el cliente administrativo.
+  getPublicSupabaseConfig();
+
   const siteUrl = z
     .string()
     .url("NEXT_PUBLIC_SITE_URL debe ser una URL válida.")

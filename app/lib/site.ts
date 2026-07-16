@@ -1,21 +1,8 @@
-const configuredBasePrice = Number.parseInt(
-  process.env.NEXT_PUBLIC_BASE_PRICE_ARS ?? "50000",
-  10,
-);
+import type { PublicSiteContent } from "@/app/lib/public-site-types";
 
-export const siteConfig = {
-  name: "Hostel Bauti",
-  shortLocation: "Ezeiza, Buenos Aires",
-  address: "Uruguayana 235, Ezeiza, Provincia de Buenos Aires, Argentina",
-  shortAddress: "Uruguayana 235, Ezeiza",
-  whatsappDisplay: "+54 9 11 2806-4272",
-  whatsappNumber: "5491128064272",
+export const socialConfig = {
   instagramHandle: "@hostel_bauti.ar",
   instagramUrl: "https://www.instagram.com/hostel_bauti.ar/",
-  initialBasePriceArs: Number.isFinite(configuredBasePrice)
-    ? configuredBasePrice
-    : 50_000,
-  checkoutTime: "10:00",
 } as const;
 
 export const navigation = [
@@ -90,7 +77,7 @@ export const confirmedSpaces = [
   {
     code: "02",
     title: "Pileta",
-    description: "Disponible para quienes se hospedan en Hostel Bauti.",
+    description: "Disponible para quienes se hospedan en el alojamiento.",
     tone: "pool",
   },
   {
@@ -107,15 +94,15 @@ export const confirmedSpaces = [
   },
 ] as const;
 
-export const faqs = [
+export function buildFaqs(content: PublicSiteContent) {
+  return [
   {
     question: "¿A qué hora es el check-out?",
-    answer: "El check-out es hasta las 10:00 hs.",
+    answer: `El check-out es hasta las ${content.checkOutUntil} hs.`,
   },
   {
     question: "¿Cuándo se puede realizar el check-in?",
-    answer:
-      "El ingreso puede realizarse desde la mañana, sujeto a disponibilidad y coordinación previa.",
+    answer: `El check-in se realiza de ${content.checkInFrom} a ${content.checkInUntil} hs.`,
   },
   {
     question: "¿El desayuno está incluido?",
@@ -144,9 +131,10 @@ export const faqs = [
   },
   {
     question: "¿Cómo puedo consultar disponibilidad?",
-    answer: `A través del formulario de la web o mediante WhatsApp al ${siteConfig.whatsappDisplay}.`,
+    answer: `A través del formulario de la web o mediante WhatsApp al ${content.whatsapp}.`,
   },
-] as const;
+  ] as const;
+}
 
 export function formatArs(value: number) {
   return new Intl.NumberFormat("es-AR", {
@@ -156,18 +144,23 @@ export function formatArs(value: number) {
   }).format(value);
 }
 
-export function whatsappHref(message: string) {
-  return `https://wa.me/${siteConfig.whatsappNumber}?text=${encodeURIComponent(message)}`;
+export function whatsappHref(whatsapp: string, message: string) {
+  const number = whatsapp.replace(/\D/g, "");
+  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
 }
 
-export const generalWhatsappHref = whatsappHref(
-  "Hola, quisiera consultar por alojamiento y disponibilidad en Hostel Bauti.",
-);
+export function generalWhatsappMessage(name: string) {
+  return `Hola, quisiera consultar por alojamiento en ${name}. ¿Podrían informarme opciones y disponibilidad?`;
+}
 
-export const mapsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-  siteConfig.address,
-)}`;
+export function mapsHref(fullAddress: string) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`;
+}
 
-export const mapsEmbedHref = `https://www.google.com/maps?q=${encodeURIComponent(
-  siteConfig.address,
-)}&output=embed`;
+export function mapsEmbedHref(fullAddress: string) {
+  return `https://www.google.com/maps?q=${encodeURIComponent(fullAddress)}&output=embed`;
+}
+
+export function publicFullAddress(content: PublicSiteContent) {
+  return `${content.address}, ${content.city}, ${content.province}, Argentina`;
+}

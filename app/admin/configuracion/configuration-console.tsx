@@ -315,7 +315,7 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
       </nav>
 
       <section className="admin-config-section" id="general">
-        <SectionHeading eyebrow="Identidad y contacto" title="Información general" description="Datos operativos del Hostel Bauti. No alteran todavía el contenido del sitio público." status={<SavedState saved={Boolean(general)} />} />
+        <SectionHeading eyebrow="Identidad y contacto" title="Información general" description="Datos operativos del Hostel Bauti. El sitio público consume únicamente los campos permitidos mediante su contrato de lectura." status={<SavedState saved={Boolean(general)} />} />
         <form className="admin-config-card" key={state.settings.general?.updatedAt ?? "general-empty"} onSubmit={submitGeneral}>
           <div className="admin-field-grid">
             <label>Nombre comercial<input defaultValue={general?.name ?? "Hostel Bauti"} name="name" required /></label>

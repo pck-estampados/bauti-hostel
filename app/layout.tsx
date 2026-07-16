@@ -1,34 +1,35 @@
 import type { Metadata } from "next";
+import { getPublicSiteContent } from "@/app/lib/public-site-content";
+import { publicFullAddress } from "@/app/lib/site";
 import "./globals.css";
 
 const publicSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
-export const metadata: Metadata = {
-  metadataBase: publicSiteUrl ? new URL(publicSiteUrl) : undefined,
-  title: {
-    default: "Hostel Bauti | Alojamiento en Ezeiza",
-    template: "%s | Hostel Bauti",
-  },
-  description:
-    "Hostel con habitaciones privadas, desayuno incluido, WiFi, patio y pileta en Ezeiza, Provincia de Buenos Aires.",
-  keywords: [
-    "hostel en Ezeiza",
-    "alojamiento en Ezeiza",
-    "habitaciones en Ezeiza",
-    "hospedaje en Ezeiza",
-    "alojamiento con pileta en Ezeiza",
-  ],
-  openGraph: {
-    type: "website",
-    locale: "es_AR",
-    siteName: "Hostel Bauti",
-    title: "Hostel Bauti | Alojamiento en Ezeiza",
-    description:
-      "Habitaciones privadas, desayuno incluido y espacios para disfrutar en Ezeiza.",
-    url: publicSiteUrl,
-  },
-  twitter: { card: "summary" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const content = await getPublicSiteContent();
+  const title = `${content.name} | Alojamiento en ${content.city}`;
+  const description = `Alojamiento en ${publicFullAddress(content)}. Consultas por WhatsApp al ${content.whatsapp}. Desde ARS ${content.basePriceArs.toLocaleString("es-AR")} por habitación/noche.`;
+
+  return {
+    metadataBase: publicSiteUrl ? new URL(publicSiteUrl) : undefined,
+    title: { default: title, template: `%s | ${content.name}` },
+    description,
+    keywords: [
+      `hostel en ${content.city}`,
+      `alojamiento en ${content.city}`,
+      `hospedaje en ${content.city}`,
+    ],
+    openGraph: {
+      type: "website",
+      locale: "es_AR",
+      siteName: content.name,
+      title,
+      description,
+      url: publicSiteUrl,
+    },
+    twitter: { card: "summary", title, description },
+  };
+}
 
 export default function RootLayout({
   children,

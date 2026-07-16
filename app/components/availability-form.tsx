@@ -1,6 +1,7 @@
 type AvailabilityFormProps = {
   compact?: boolean;
   defaults?: {
+    name?: string;
     checkin?: string;
     checkout?: string;
     adults?: string;
@@ -15,6 +16,17 @@ export function AvailabilityForm({ compact = false, defaults }: AvailabilityForm
       action="/disponibilidad"
       method="get"
     >
+      <label>
+        <span>Tu nombre</span>
+        <input
+          type="text"
+          name="name"
+          defaultValue={defaults?.name}
+          maxLength={100}
+          autoComplete="name"
+          placeholder="Nombre"
+        />
+      </label>
       <label>
         <span>Ingreso</span>
         <input type="date" name="checkin" defaultValue={defaults?.checkin} required />

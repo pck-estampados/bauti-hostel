@@ -2,19 +2,22 @@ import type { Metadata } from "next";
 import { AccommodationInquiry } from "@/app/components/accommodation-inquiry";
 import { PageHero } from "@/app/components/page-hero";
 import { RoomCard } from "@/app/components/room-card";
+import { getPublicSiteContent } from "@/app/lib/public-site-content";
 import { publishedRooms } from "@/app/lib/site";
 
 export const metadata: Metadata = {
   title: "Habitaciones privadas",
+  alternates: { canonical: "/habitaciones" },
   description:
-    "Consultá habitaciones privadas disponibles en Hostel Bauti, Ezeiza. Desayuno incluido, WiFi, patio y pileta para huéspedes.",
+    "Consultá por WhatsApp si existe una opción de alojamiento para tus fechas. El inventario no se publica hasta estar confirmado.",
 };
 
-export default function RoomsPage() {
+export default async function RoomsPage() {
+  const content = await getPublicSiteContent();
   return (
     <main>
       <PageHero
-        eyebrow="Alojamiento en Ezeiza"
+        eyebrow={`Alojamiento en ${content.city}`}
         title="Habitaciones privadas para tu estadía"
         description="Consultá las opciones disponibles según tus fechas y cantidad de huéspedes. La tarifa final se confirma para cada estadía."
         aside="Baños compartidos"
@@ -28,7 +31,7 @@ export default function RoomsPage() {
               ))}
             </div>
           ) : (
-            <AccommodationInquiry />
+            <AccommodationInquiry content={content} />
           )}
 
           <div className="two-column-note room-truths">

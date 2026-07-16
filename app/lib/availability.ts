@@ -4,6 +4,7 @@ export type AvailabilitySearchParams = Record<
 >;
 
 export type AvailabilityRequest = {
+  name: string;
   checkin: string;
   checkout: string;
   adults: number;
@@ -24,6 +25,7 @@ export function parseAvailabilityRequest(
   params: AvailabilitySearchParams,
 ): AvailabilityRequest {
   return {
+    name: single(params.name).trim().slice(0, 100),
     checkin: single(params.checkin),
     checkout: single(params.checkout),
     adults: safeCount(single(params.adults), 2, 1, 20),
@@ -59,18 +61,22 @@ function shortDate(value: string) {
   return `${day}/${month}/${year}`;
 }
 
-export function buildAvailabilityWhatsappMessage(request: AvailabilityRequest) {
+export function buildAvailabilityWhatsappMessage(
+  request: AvailabilityRequest,
+  hostelName: string,
+) {
   const totalGuests = request.adults + request.children;
 
   return [
-    "Hola, quiero consultar disponibilidad en Hostel Bauti.",
+    `Hola, quiero consultar disponibilidad en ${hostelName}.`,
     "",
+    ...(request.name ? [`Nombre: ${request.name}`] : []),
     `Fecha de ingreso: ${shortDate(request.checkin)}`,
     `Fecha de salida: ${shortDate(request.checkout)}`,
     `Cantidad de huéspedes: ${totalGuests}`,
     `Adultos: ${request.adults}`,
     `Niños: ${request.children}`,
     "",
-    "Quisiera conocer las habitaciones disponibles y el precio total. Gracias.",
+    "Quisiera saber si existe una opción para estas fechas y cuál sería el precio total. Entiendo que esta consulta no confirma disponibilidad. Gracias.",
   ].join("\n");
 }

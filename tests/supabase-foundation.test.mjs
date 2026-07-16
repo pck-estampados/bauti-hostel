@@ -150,3 +150,24 @@ test("extends inventory additively with RLS, audit and no invented private bathr
   assert.match(reservation, /mode === "demo" \? DEFAULT_REFERENCE_RATE_ARS/);
   assert.match(walkIn, /mode === "demo" \? DEFAULT_REFERENCE_RATE_ARS/);
 });
+
+test("exposes only the typed public-site RPC without generic anonymous settings access", async () => {
+  const [migration, repository, site] = await Promise.all([
+    read("supabase/migrations/202607160002_public_site_configuration.sql"),
+    read("app/lib/public-site-content.ts"),
+    read("app/lib/site.ts"),
+  ]);
+
+  assert.match(migration, /revoke select on public\.settings from anon/i);
+  assert.match(migration, /create or replace function public\.get_public_site_configuration\(\)/i);
+  assert.match(migration, /security definer/i);
+  assert.match(migration, /set search_path = ''/i);
+  assert.match(migration, /grant execute on function public\.get_public_site_configuration\(\) to anon/i);
+  assert.match(migration, /where s\.key = any \(array\[/i);
+  assert.doesNotMatch(migration, /updated_by|audit_logs|user_roles/);
+  assert.match(repository, /import "server-only"/);
+  assert.match(repository, /persistSession: false/);
+  assert.match(repository, /\.rpc\("get_public_site_configuration"\)/);
+  assert.doesNotMatch(repository, /createSupabaseAdminClient|SUPABASE_(?:SECRET|SERVICE_ROLE)/);
+  assert.doesNotMatch(site, /NEXT_PUBLIC_BASE_PRICE_ARS|50_000|50000/);
+});

@@ -1,6 +1,14 @@
-import { faqs } from "@/app/lib/site";
+import { buildFaqs } from "@/app/lib/site";
+import type { PublicSiteContent } from "@/app/lib/public-site-types";
 
-export function FaqList({ limit }: { limit?: number }) {
+export function FaqList({
+  content,
+  limit,
+}: {
+  content: PublicSiteContent;
+  limit?: number;
+}) {
+  const faqs = buildFaqs(content);
   return (
     <div className="faq-list">
       {faqs.slice(0, limit).map((item, index) => (

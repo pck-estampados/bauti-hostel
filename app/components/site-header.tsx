@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { navigation } from "@/app/lib/site";
+import type { PublicSiteContent } from "@/app/lib/public-site-types";
 
-export function SiteHeader() {
+export function SiteHeader({ content }: { content: PublicSiteContent }) {
   return (
     <header className="site-header">
       <div className="shell site-header__inner">
-        <Link className="wordmark" href="/" aria-label="Hostel Bauti, inicio">
+        <Link className="wordmark" href="/" aria-label={`${content.name}, inicio`}>
           <span className="wordmark__seal" aria-hidden="true">HB</span>
           <span>
-            <strong>Hostel Bauti</strong>
-            <small>Ezeiza · Buenos Aires</small>
+            <strong>{content.name}</strong>
+            <small>{content.city} · {content.province}</small>
           </span>
         </Link>
 
@@ -20,7 +21,7 @@ export function SiteHeader() {
         </nav>
 
         <Link className="button button--small button--dark header-booking" href="/reservar">
-          Reservar
+          Consultar estadía
         </Link>
 
         <details className="mobile-menu">
@@ -32,7 +33,7 @@ export function SiteHeader() {
             {navigation.map((item) => (
               <Link key={item.href} href={item.href}>{item.label}</Link>
             ))}
-            <Link className="button button--primary" href="/reservar">Reservar</Link>
+            <Link className="button button--primary" href="/reservar">Consultar estadía</Link>
           </nav>
         </details>
       </div>

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AccommodationInquiry } from "@/app/components/accommodation-inquiry";
 import { AvailabilityForm } from "@/app/components/availability-form";
@@ -7,34 +8,40 @@ import { SectionHeading } from "@/app/components/section-heading";
 import {
   confirmedAmenities,
   confirmedSpaces,
-  generalWhatsappHref,
+  generalWhatsappMessage,
   mapsHref,
   mapsEmbedHref,
+  publicFullAddress,
   publishedRooms,
-  siteConfig,
+  whatsappHref,
 } from "@/app/lib/site";
+import { getPublicSiteContent } from "@/app/lib/public-site-content";
 
-const lodgingBusinessJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "Hostel",
-  name: siteConfig.name,
-  address: {
-    "@type": "PostalAddress",
-    streetAddress: "Uruguayana 235",
-    addressLocality: "Ezeiza",
-    addressRegion: "Provincia de Buenos Aires",
-    addressCountry: "AR",
-  },
-  telephone: siteConfig.whatsappDisplay,
-  sameAs: [siteConfig.instagramUrl],
-  amenityFeature: confirmedAmenities.map((amenity) => ({
-    "@type": "LocationFeatureSpecification",
-    name: amenity.title,
-    value: true,
-  })),
-};
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const content = await getPublicSiteContent();
+  const fullAddress = publicFullAddress(content);
+  const contactHref = whatsappHref(
+    content.whatsapp,
+    generalWhatsappMessage(content.name),
+  );
+  const lodgingBusinessJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Hostel",
+    name: content.name,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: content.address,
+      addressLocality: content.city,
+      addressRegion: content.province,
+      addressCountry: "AR",
+    },
+    telephone: content.phone,
+    priceRange: `Desde ARS ${content.basePriceArs.toLocaleString("es-AR")} por habitación/noche`,
+    checkinTime: content.checkInFrom,
+    checkoutTime: content.checkOutUntil,
+  };
   return (
     <main>
       <script
@@ -45,15 +52,15 @@ export default function HomePage() {
       <section className="hero">
         <div className="shell hero__grid">
           <div className="hero__content">
-            <p className="eyebrow">Ezeiza · Provincia de Buenos Aires</p>
+            <p className="eyebrow">{content.city} · Provincia de {content.province}</p>
             <h1>Descansá cerca.<br /><em>Sentite en casa.</em></h1>
             <p className="hero__lead">
               Habitaciones privadas, desayuno incluido y espacios para bajar el
               ritmo. Una estadía cálida y simple, con atención cercana.
             </p>
             <div className="button-row">
-              <Link className="button button--primary" href="/reservar">Reservar ahora</Link>
-              <a className="button button--ghost" href={generalWhatsappHref} target="_blank" rel="noreferrer">
+              <Link className="button button--primary" href="/reservar">Consultar estadía</Link>
+              <a className="button button--ghost" href={contactHref} target="_blank" rel="noreferrer">
                 Consultar por WhatsApp
               </a>
             </div>
@@ -64,16 +71,16 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="hero-art" aria-label="Composición gráfica de Hostel Bauti">
+          <div className="hero-art" aria-label={`Composición gráfica de ${content.name}`}>
             <div className="hero-art__sun" />
             <div className="hero-art__arch">
               <span>HB</span>
-              <p>Hostel Bauti</p>
-              <small>Ezeiza · Argentina</small>
+              <p>{content.name}</p>
+              <small>{content.city} · Argentina</small>
             </div>
             <div className="hero-art__caption">
-              <span>Uruguayana 235</span>
-              <strong>Ezeiza · Buenos Aires</strong>
+              <span>{content.address}</span>
+              <strong>{content.city} · {content.province}</strong>
             </div>
           </div>
         </div>
@@ -95,8 +102,8 @@ export default function HomePage() {
           </div>
           <div className="intro-copy">
             <p>
-              Hostel Bauti combina la privacidad de tu habitación con el clima
-              relajado de los espacios compartidos. Estamos en Ezeiza y queremos
+              {content.name} combina la privacidad de tu habitación con el clima
+              relajado de los espacios compartidos. Estamos en {content.city} y queremos
               que te sientas acompañado desde la primera consulta.
             </p>
             <Link className="text-link" href="/servicios">Conocé los servicios <span aria-hidden="true">→</span></Link>
@@ -123,7 +130,7 @@ export default function HomePage() {
               ))}
             </div>
           ) : (
-            <AccommodationInquiry />
+            <AccommodationInquiry content={content} />
           )}
         </div>
       </section>
@@ -133,7 +140,7 @@ export default function HomePage() {
           <SectionHeading
             eyebrow="Incluido en tu estadía"
             title="Lo esencial, bien resuelto"
-            description="Servicios confirmados actualmente por Hostel Bauti."
+            description={`Servicios confirmados actualmente por ${content.name}.`}
           />
           <div className="amenities-grid">
             {confirmedAmenities.map((amenity) => (
@@ -158,7 +165,7 @@ export default function HomePage() {
             <SectionHeading
               eyebrow="Galería"
               title="Espacios para disfrutar tu estadía"
-              description="Habitaciones privadas, pileta, patio y espacios comunes forman parte de la propuesta confirmada de Hostel Bauti."
+              description={`Habitaciones privadas, pileta, patio y espacios comunes forman parte de la propuesta confirmada de ${content.name}.`}
             />
             <Link className="text-link section-topline__link" href="/galeria">Ver espacios <span aria-hidden="true">→</span></Link>
           </div>
@@ -177,20 +184,20 @@ export default function HomePage() {
         <div className="shell location-grid">
           <div className="map-embed">
             <iframe
-              src={mapsEmbedHref}
-              title="Mapa de Hostel Bauti en Uruguayana 235, Ezeiza"
+              src={mapsEmbedHref(fullAddress)}
+              title={`Mapa de ${content.name} en ${content.address}, ${content.city}`}
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
             />
           </div>
           <div className="location-copy">
             <p className="eyebrow">Dónde estamos</p>
-            <h2>Tu descanso en Ezeiza</h2>
-            <p className="location-address">Uruguayana 235<br />Ezeiza, Provincia de Buenos Aires</p>
+            <h2>Tu descanso en {content.city}</h2>
+            <p className="location-address">{content.address}<br />{content.city}, Provincia de {content.province}</p>
             <p>
               Consultanos por WhatsApp antes de viajar y te ayudamos a organizar tu llegada.
             </p>
-            <a className="button button--dark" href={mapsHref} target="_blank" rel="noreferrer">Cómo llegar</a>
+            <a className="button button--dark" href={mapsHref(fullAddress)} target="_blank" rel="noreferrer">Cómo llegar</a>
           </div>
         </div>
       </section>
@@ -205,20 +212,20 @@ export default function HomePage() {
             />
             <Link className="text-link" href="/preguntas-frecuentes">Ver todas las respuestas <span aria-hidden="true">→</span></Link>
           </div>
-          <FaqList limit={6} />
+          <FaqList content={content} limit={6} />
         </div>
       </section>
 
       <section className="final-cta">
         <div className="shell final-cta__inner">
           <div>
-            <p className="eyebrow">Hostel Bauti · Ezeiza</p>
+            <p className="eyebrow">{content.name} · {content.city}</p>
             <h2>¿Ya tenés tus fechas?</h2>
             <p>Consultá disponibilidad y recibí atención directa.</p>
           </div>
           <div className="button-row">
-            <Link className="button button--light" href="/reservar">Reservar</Link>
-            <a className="button button--outline-light" href={generalWhatsappHref} target="_blank" rel="noreferrer">WhatsApp</a>
+            <Link className="button button--light" href="/reservar">Consultar estadía</Link>
+            <a className="button button--outline-light" href={contactHref} target="_blank" rel="noreferrer">WhatsApp</a>
           </div>
         </div>
       </section>

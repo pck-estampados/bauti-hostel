@@ -1,23 +1,31 @@
 import type { Metadata } from "next";
 import { PageHero } from "@/app/components/page-hero";
+import { getPublicSiteContent } from "@/app/lib/public-site-content";
 import {
   confirmedSpaces,
-  generalWhatsappHref,
-  siteConfig,
+  generalWhatsappMessage,
+  socialConfig,
+  whatsappHref,
 } from "@/app/lib/site";
 
 export const metadata: Metadata = {
   title: "Galería y espacios",
+  alternates: { canonical: "/galeria" },
   description:
-    "Conocé los espacios confirmados de Hostel Bauti: habitaciones privadas, pileta, patio y espacios comunes en Ezeiza.",
+    "Conocé los espacios confirmados del alojamiento: habitaciones privadas, pileta, patio y espacios comunes.",
 };
 
-export default function GalleryPage() {
+export default async function GalleryPage() {
+  const content = await getPublicSiteContent();
+  const contactHref = whatsappHref(
+    content.whatsapp,
+    generalWhatsappMessage(content.name),
+  );
   return (
     <main>
       <PageHero
         eyebrow="Espacios del alojamiento"
-        title="Conocé qué ofrece Hostel Bauti"
+        title={`Conocé qué ofrece ${content.name}`}
         description="Para ver fotografías actuales del alojamiento, visitá nuestro Instagram o pedinos imágenes por WhatsApp."
         aside="Contenido real"
       />
@@ -39,10 +47,10 @@ export default function GalleryPage() {
               <p>Consultanos y te compartimos información actual del alojamiento.</p>
             </div>
             <div className="button-row">
-              <a className="button button--primary" href={generalWhatsappHref} target="_blank" rel="noreferrer">
+              <a className="button button--primary" href={contactHref} target="_blank" rel="noreferrer">
                 Pedir fotos por WhatsApp
               </a>
-              <a className="button button--ghost" href={siteConfig.instagramUrl} target="_blank" rel="noreferrer">
+              <a className="button button--ghost" href={socialConfig.instagramUrl} target="_blank" rel="noreferrer">
                 Ver Instagram
               </a>
             </div>

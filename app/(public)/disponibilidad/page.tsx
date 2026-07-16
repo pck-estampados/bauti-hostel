@@ -9,12 +9,12 @@ import {
   parseAvailabilityRequest,
   type AvailabilitySearchParams,
 } from "@/app/lib/availability";
-import { whatsappHref } from "@/app/lib/site";
+import { getPublicSiteContent } from "@/app/lib/public-site-content";
+import { generalWhatsappMessage, whatsappHref } from "@/app/lib/site";
 
 export const metadata: Metadata = {
   title: "Consultar disponibilidad",
-  description:
-    "Consultá disponibilidad y tarifas de Hostel Bauti por WhatsApp según tus fechas y cantidad de huéspedes.",
+  alternates: { canonical: "/disponibilidad" },
 };
 
 export default async function AvailabilityPage({
@@ -23,18 +23,19 @@ export default async function AvailabilityPage({
   searchParams: Promise<AvailabilitySearchParams>;
 }) {
   const request = parseAvailabilityRequest(await searchParams);
+  const content = await getPublicSiteContent();
   const datesAreValid = isValidAvailabilityRequest(request);
   const totalGuests = request.adults + request.children;
   const message = datesAreValid
-    ? buildAvailabilityWhatsappMessage(request)
-    : "Hola, quisiera consultar por alojamiento y disponibilidad en Hostel Bauti.";
+    ? buildAvailabilityWhatsappMessage(request, content.name)
+    : generalWhatsappMessage(content.name);
 
   return (
     <main>
       <PageHero
         eyebrow="Disponibilidad"
         title="Consultá tu estadía"
-        description="Revisá tus fechas y envianos la consulta por WhatsApp. Te responderemos con las habitaciones disponibles y la tarifa total."
+        description="Revisá tus fechas y envianos la consulta por WhatsApp. Te responderemos si existe una opción y cuál es la tarifa aplicable."
         aside="Respuesta por WhatsApp"
       />
       <section className="section page-section availability-page">
@@ -42,6 +43,7 @@ export default async function AvailabilityPage({
           <div className="booking-panel">
             <h2>Revisá tu búsqueda</h2>
             <AvailabilityForm defaults={{
+              name: request.name,
               checkin: request.checkin,
               checkout: request.checkout,
               adults: String(request.adults),
@@ -54,12 +56,13 @@ export default async function AvailabilityPage({
                 <span className="status-badge status-badge--pending">Consulta lista</span>
                 <h2>{displayDate(request.checkin)} <small>al</small> {displayDate(request.checkout)}</h2>
                 <dl>
+                  {request.name ? <div><dt>Nombre</dt><dd>{request.name}</dd></div> : null}
                   <div><dt>Adultos</dt><dd>{request.adults}</dd></div>
                   <div><dt>Niños</dt><dd>{request.children}</dd></div>
                   <div><dt>Total</dt><dd>{totalGuests}</dd></div>
                 </dl>
                 <p>WhatsApp se abrirá con todos los datos ingresados. La disponibilidad y la tarifa se confirman en la conversación.</p>
-                <a className="button button--primary button--full" href={whatsappHref(message)} target="_blank" rel="noreferrer">
+                <a className="button button--primary button--full" href={whatsappHref(content.whatsapp, message)} target="_blank" rel="noreferrer">
                   Consultar disponibilidad por WhatsApp
                 </a>
               </>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getPublicSiteContent } from "@/app/lib/public-site-content";
 import { publishedRooms, whatsappHref } from "@/app/lib/site";
 
 type RoomDetailProps = { params: Promise<{ slug: string }> };
@@ -13,16 +14,21 @@ export async function generateMetadata({ params }: RoomDetailProps): Promise<Met
   const { slug } = await params;
   const room = publishedRooms.find((item) => item.slug === slug);
   return room
-    ? { title: room.name, description: room.description }
-    : { title: "Habitación" };
+    ? {
+        title: room.name,
+        description: room.description,
+        alternates: { canonical: `/habitaciones/${room.slug}` },
+      }
+    : { title: "Habitación", robots: { index: false, follow: false } };
 }
 
 export default async function RoomDetailPage({ params }: RoomDetailProps) {
   const { slug } = await params;
   const room = publishedRooms.find((item) => item.slug === slug);
   if (!room) notFound();
+  const content = await getPublicSiteContent();
 
-  const message = `Hola, quiero consultar disponibilidad y tarifa para ${room.name} en Hostel Bauti.`;
+  const message = `Hola, quiero consultar disponibilidad y tarifa para ${room.name} en ${content.name}. Entiendo que la disponibilidad debe ser confirmada.`;
 
   return (
     <main>
@@ -33,7 +39,7 @@ export default async function RoomDetailPage({ params }: RoomDetailProps) {
             <h1>{room.name}</h1>
             <p>{room.description}</p>
             <div className="button-row">
-              <a className="button button--primary" href={whatsappHref(message)} target="_blank" rel="noreferrer">
+              <a className="button button--primary" href={whatsappHref(content.whatsapp, message)} target="_blank" rel="noreferrer">
                 Consultar disponibilidad
               </a>
               <Link className="button button--ghost" href="/habitaciones">Ver habitaciones</Link>

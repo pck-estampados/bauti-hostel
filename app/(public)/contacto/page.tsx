@@ -1,10 +1,23 @@
 import type { Metadata } from "next";
 import { PageHero } from "@/app/components/page-hero";
-import { generalWhatsappHref, siteConfig } from "@/app/lib/site";
+import { getPublicSiteContent } from "@/app/lib/public-site-content";
+import {
+  generalWhatsappMessage,
+  socialConfig,
+  whatsappHref,
+} from "@/app/lib/site";
 
-export const metadata: Metadata = { title: "Contacto" };
+export const metadata: Metadata = {
+  title: "Contacto",
+  alternates: { canonical: "/contacto" },
+};
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const content = await getPublicSiteContent();
+  const contactHref = whatsappHref(
+    content.whatsapp,
+    generalWhatsappMessage(content.name),
+  );
   return (
     <main>
       <PageHero
@@ -15,14 +28,14 @@ export default function ContactPage() {
       />
       <section className="section page-section">
         <div className="shell contact-grid">
-          <a className="contact-card contact-card--primary" href={generalWhatsappHref} target="_blank" rel="noreferrer">
-            <span>WhatsApp</span><strong>{siteConfig.whatsappDisplay}</strong><p>Reservas y consultas</p><i aria-hidden="true">→</i>
+          <a className="contact-card contact-card--primary" href={contactHref} target="_blank" rel="noreferrer">
+            <span>WhatsApp</span><strong>{content.whatsapp}</strong><p>Reservas y consultas</p><i aria-hidden="true">→</i>
           </a>
-          <a className="contact-card" href={siteConfig.instagramUrl} target="_blank" rel="noreferrer">
-            <span>Instagram</span><strong>{siteConfig.instagramHandle}</strong><p>Novedades y contacto</p><i aria-hidden="true">→</i>
+          <a className="contact-card" href={socialConfig.instagramUrl} target="_blank" rel="noreferrer">
+            <span>Instagram</span><strong>{socialConfig.instagramHandle}</strong><p>Novedades y contacto</p><i aria-hidden="true">→</i>
           </a>
           <div className="contact-card">
-            <span>Dirección</span><strong>Uruguayana 235</strong><p>Ezeiza, Provincia de Buenos Aires</p>
+            <span>Dirección</span><strong>{content.address}</strong><p>{content.city}, Provincia de {content.province}</p>
           </div>
         </div>
         <div className="shell response-note">

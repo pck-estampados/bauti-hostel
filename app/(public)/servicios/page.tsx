@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { PageHero } from "@/app/components/page-hero";
 import { confirmedAmenities } from "@/app/lib/site";
 
-export const metadata: Metadata = { title: "Servicios" };
+export const metadata: Metadata = {
+  title: "Servicios",
+  alternates: { canonical: "/servicios" },
+};
 
 export default function ServicesPage() {
   return (

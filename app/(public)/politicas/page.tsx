@@ -1,27 +1,33 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHero } from "@/app/components/page-hero";
+import { getPublicSiteContent } from "@/app/lib/public-site-content";
 
 export const metadata: Metadata = {
   title: "Información del alojamiento",
-  description: "Horarios e información confirmada para hospedarse en Hostel Bauti.",
+  alternates: { canonical: "/politicas" },
+  description: "Horarios y políticas públicas confirmadas del alojamiento.",
 };
 
-const confirmedRules = [
-  ["Check-out", "Hasta las 10:00 hs."],
-  ["Check-in", "Desde la mañana, sujeto a disponibilidad y coordinación previa."],
-  ["Pileta", "Disponible para huéspedes."],
-  ["Fumar", "Únicamente en espacios exteriores, como la entrada o el patio."],
-  ["Estacionamiento", "El establecimiento no posee estacionamiento."],
-  ["Baños", "Las habitaciones no tienen baño privado; los baños son compartidos."],
-] as const;
-
-export default function PoliciesPage() {
+export default async function PoliciesPage() {
+  const content = await getPublicSiteContent();
+  const confirmedRules = [
+    ["Check-in", `De ${content.checkInFrom} a ${content.checkInUntil} hs.`],
+    ["Check-out", `Hasta las ${content.checkOutUntil} hs.`],
+    [
+      "Horario de descanso",
+      `De ${content.quietHoursFrom} a ${content.quietHoursUntil} hs. ${content.policies.quietHours}`,
+    ],
+    ["Reservas y cancelaciones", content.policies.cancellation],
+    ["Menores", content.policies.minors],
+    ["Mascotas", content.policies.pets],
+    ["Fumar", content.policies.smoking],
+  ] as const;
   return (
     <main>
       <PageHero
         eyebrow="Antes de tu estadía"
-        title="Información de Hostel Bauti"
+        title={`Información de ${content.name}`}
         description="Horarios y características importantes para organizar tu llegada y estadía."
         aside="Información confirmada"
       />

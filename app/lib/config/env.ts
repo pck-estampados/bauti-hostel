@@ -78,15 +78,27 @@ export function getServerSupabaseConfig(): ServerSupabaseConfig {
   return result.data;
 }
 
+function isSecureSiteUrl(value: string): boolean {
+  const url = new URL(value);
+  if (url.protocol === "https:") return true;
+
+  return (
+    url.protocol === "http:" &&
+    (url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]")
+  );
+}
+
 export function assertProductionEnvironment(): void {
   if (getAppMode() !== "production") return;
 
   getServerSupabaseConfig();
-
   const siteUrl = z
     .string()
     .url("NEXT_PUBLIC_SITE_URL debe ser una URL válida.")
-    .refine((value) => value.startsWith("https://"), "El sitio productivo debe utilizar HTTPS.")
+    .refine(
+      isSecureSiteUrl,
+      "El sitio productivo debe utilizar HTTPS, excepto durante pruebas locales en localhost.",
+    )
     .safeParse(process.env.NEXT_PUBLIC_SITE_URL);
 
   if (!siteUrl.success) {

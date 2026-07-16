@@ -648,6 +648,7 @@ a.contact-card:hover { transform: translateY(-5px); }
 .admin-button--compact { min-height: 34px; padding: 7px 11px; border-color: var(--line); background: var(--admin-panel); font-size: .67rem; }
 .admin-button--large { min-height: 52px; padding-inline: 24px; text-transform: uppercase; letter-spacing: .05em; }
 .admin-button:disabled { opacity: .45; cursor: not-allowed; }
+.admin-button[aria-disabled="true"], .admin-quick-action[aria-disabled="true"] { opacity: .45; cursor: not-allowed; pointer-events: none; }
 .admin-metric-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 38px; }
 .admin-metric { position: relative; min-height: 126px; overflow: hidden; padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--admin-panel); }
 .admin-metric::after { position: absolute; right: -20px; bottom: -30px; width: 80px; height: 80px; border: 15px solid currentColor; border-radius: 50%; content: ""; opacity: .06; }
@@ -873,6 +874,36 @@ a.contact-card:hover { transform: translateY(-5px); }
 .admin-role-selector label strong { font-size: .65rem; }
 .admin-role-selector label small { color: var(--admin-muted); font-size: .55rem; }
 .admin-security-note { margin: -9px 0 18px; padding: 11px 13px; border-left: 3px solid var(--sand); background: #fff2cc; color: #614d25; font-size: .64rem; }
+.admin-setup-progress { margin: 18px 0; padding: 25px; border-radius: 20px; background: var(--admin-navy); color: var(--white); }
+.admin-setup-progress > div p { margin: 0 0 7px; color: var(--clay-light); font-size: .6rem; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
+.admin-setup-progress > div h2 { margin: 0 0 5px; font-family: var(--font-display); font-size: 1.8rem; font-weight: 560; }
+.admin-setup-progress > div > span { color: rgba(255,255,255,.57); font-size: .68rem; }
+.admin-setup-progress ol { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 22px 0 0; padding: 0; list-style: none; }
+.admin-progress-step { display: grid; min-height: 82px; grid-template-columns: auto 1fr; align-content: center; gap: 2px 9px; padding: 12px; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; background: rgba(255,255,255,.05); }
+.admin-progress-step > span { grid-row: 1 / 3; display: grid; width: 28px; height: 28px; place-items: center; border-radius: 8px; background: rgba(255,255,255,.1); color: rgba(255,255,255,.55); font-size: .56rem; font-weight: 850; }
+.admin-progress-step strong { align-self: end; font-size: .64rem; }
+.admin-progress-step small { color: rgba(255,255,255,.48); font-size: .56rem; font-weight: 800; text-transform: uppercase; }
+.admin-progress-step--incomplete { border-color: rgba(226,180,88,.44); background: rgba(226,180,88,.08); }
+.admin-progress-step--incomplete > span { background: #8b6b2b; color: #fff4d8; }
+.admin-progress-step--configured { border-color: rgba(99,174,119,.45); background: rgba(99,174,119,.1); }
+.admin-progress-step--configured > span { background: #3d7850; color: var(--white); }
+.admin-progress-step--configured small { color: #a9dbb5; }
+.admin-schema-notice { display: flex; align-items: start; gap: 10px; margin: 14px 0; padding: 15px 17px; border: 1px solid #dfc387; border-radius: 13px; background: #fff2cc; color: #614d25; }
+.admin-schema-notice strong { flex: 0 0 auto; font-size: .68rem; }
+.admin-schema-notice span { font-size: .66rem; }
+.admin-service-rooms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.admin-service-room { padding: 21px; border: 1px solid var(--line); border-radius: 18px; background: var(--admin-panel); }
+.admin-service-room > header { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 15px; }
+.admin-service-room > header > div { display: flex; flex-direction: column; }
+.admin-service-room > header strong { font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; }
+.admin-service-room > header span, .admin-service-room > header small { color: var(--admin-muted); font-size: .6rem; }
+.admin-service-room fieldset { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: 0 0 17px; padding: 0; border: 0; }
+.admin-service-room legend { margin-bottom: 8px; color: var(--admin-muted); font-size: .58rem; font-weight: 850; text-transform: uppercase; }
+.admin-service-room fieldset label { display: flex; min-height: 54px; align-items: center; gap: 8px; padding: 9px; border-radius: 10px; background: var(--cream); cursor: pointer; }
+.admin-service-room fieldset input { width: 16px; height: 16px; flex: 0 0 auto; accent-color: var(--clay); }
+.admin-service-room fieldset label span { display: flex; min-width: 0; flex-direction: column; }
+.admin-service-room fieldset label strong { font-size: .63rem; }
+.admin-service-room fieldset label small { overflow: hidden; color: var(--admin-muted); font-size: .55rem; text-overflow: ellipsis; white-space: nowrap; }
 
 @media (max-width: 1220px) {
   .admin-metric-grid, .admin-quick-grid { grid-template-columns: repeat(3, 1fr); }
@@ -883,6 +914,7 @@ a.contact-card:hover { transform: translateY(-5px); }
   .admin-list-panel__head--payments > :nth-child(2), .admin-list-row--payments > :nth-child(2) { display: none; }
   .admin-field-grid--five { grid-template-columns: repeat(3, 1fr); }
   .admin-role-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-setup-progress ol { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 900px) {
@@ -905,6 +937,7 @@ a.contact-card:hover { transform: translateY(-5px); }
   .admin-access-summary { grid-template-columns: 1fr 1fr; }
   .admin-access-verdict { justify-self: start; }
   .admin-config-records--grid, .admin-bed-groups { grid-template-columns: 1fr; }
+  .admin-service-rooms { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 620px) {
@@ -948,4 +981,8 @@ a.contact-card:hover { transform: translateY(-5px); }
   .admin-price-field { grid-template-columns: 1fr; }
   .admin-role-overview { grid-template-columns: 1fr; }
   .admin-role-selector { grid-template-columns: 1fr; }
+  .admin-setup-progress { padding: 20px; }
+  .admin-setup-progress ol { grid-template-columns: 1fr 1fr; }
+  .admin-schema-notice { flex-direction: column; }
+  .admin-service-room fieldset { grid-template-columns: 1fr; }
 }

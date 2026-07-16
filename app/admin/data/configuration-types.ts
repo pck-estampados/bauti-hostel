@@ -43,9 +43,11 @@ export type StoredSetting<T> = {
 export type ConfigurationRoomType = {
   id: string;
   code: string;
-  name: string;
+  internalName: string;
+  publicName: string;
   description: string;
   defaultCapacity: number;
+  baseRate: number | null;
   active: boolean;
 };
 
@@ -56,6 +58,9 @@ export type ConfigurationRoom = {
   displayName: string;
   capacity: number;
   status: RoomStatus;
+  sector: string;
+  internalNotes: string;
+  serviceIds: string[];
   active: boolean;
 };
 
@@ -64,7 +69,17 @@ export type ConfigurationBed = {
   roomId: string;
   code: string;
   bedType: BedType;
+  quantity: number;
   capacity: number;
+  active: boolean;
+};
+
+export type ConfigurationRoomService = {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  isSystem: boolean;
   active: boolean;
 };
 
@@ -93,6 +108,7 @@ export type ConfigurationProfile = {
 };
 
 export type ConfigurationSnapshot = {
+  inventorySchemaReady: boolean;
   settings: {
     general: StoredSetting<GeneralSettings> | null;
     schedules: StoredSetting<ScheduleSettings> | null;
@@ -102,6 +118,7 @@ export type ConfigurationSnapshot = {
   roomTypes: ConfigurationRoomType[];
   rooms: ConfigurationRoom[];
   beds: ConfigurationBed[];
+  services: ConfigurationRoomService[];
   profiles: ConfigurationProfile[];
   roles: ConfigurationRole[];
   permissions: ConfigurationPermission[];
@@ -109,10 +126,12 @@ export type ConfigurationSnapshot = {
 
 export function emptyConfigurationSnapshot(): ConfigurationSnapshot {
   return {
+    inventorySchemaReady: false,
     settings: { general: null, schedules: null, price: null, policies: null },
     roomTypes: [],
     rooms: [],
     beds: [],
+    services: [],
     profiles: [],
     roles: [],
     permissions: [],

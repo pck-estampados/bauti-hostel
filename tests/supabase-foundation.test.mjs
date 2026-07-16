@@ -102,6 +102,7 @@ test("rejects inactive or roleless staff and protects configuration with session
   assert.match(configurationRoute, /assertSameOrigin/);
   assert.match(configurationRoute, /requirePermissions\(staff, "settings\.manage"\)/);
   assert.match(configurationRoute, /requirePermissions\(staff, "rooms\.inventory_manage"\)/);
+  assert.match(configurationRoute, /requirePermissions\(staff, "rooms\.inventory_manage", "rooms\.manage"\)/);
   assert.match(configurationRoute, /requirePermissions\(staff, "staff\.manage", "rbac\.manage"\)/);
   assert.match(repository, /from\("settings"\)/);
   assert.match(repository, /from\("room_types"\)/);
@@ -111,4 +112,41 @@ test("rejects inactive or roleless staff and protects configuration with session
   assert.match(security, /create policy settings_manage[\s\S]*private\.has_permission\('settings\.manage'\)/);
   assert.match(security, /create policy rooms_manage[\s\S]*private\.has_permission\('rooms\.inventory_manage'\)/);
   assert.match(security, /create policy user_roles_management_all[\s\S]*private\.has_permission\('rbac\.manage'\)/);
+});
+
+test("extends inventory additively with RLS, audit and no invented private bathrooms", async () => {
+  const [migration, repository, validation, reservation, walkIn, roomsPage] = await Promise.all([
+    read("supabase/migrations/202607160001_inventory_configuration.sql"),
+    read("app/admin/data/supabase-configuration-repository.ts"),
+    read("app/admin/data/configuration-validation.ts"),
+    read("app/admin/reservas/nueva/page.tsx"),
+    read("app/admin/walk-in/page.tsx"),
+    read("app/admin/habitaciones/page.tsx"),
+  ]);
+
+  assert.match(migration, /add column if not exists public_name/);
+  assert.match(migration, /add column if not exists base_rate/);
+  assert.match(migration, /add column if not exists sector/);
+  assert.match(migration, /add column if not exists quantity/);
+  assert.match(migration, /create table if not exists public\.room_services/);
+  assert.match(migration, /create table if not exists public\.room_service_assignments/);
+  assert.match(migration, /private\.has_permission\('rooms\.inventory_manage'\)/);
+  assert.match(migration, /create policy rooms_update[\s\S]*rooms\.inventory_manage[\s\S]*rooms\.manage/);
+  assert.match(migration, /create index if not exists rooms_room_type_id_idx/);
+  assert.match(migration, /create index if not exists beds_room_id_idx/);
+  assert.match(migration, /create index if not exists room_service_assignments_service_id_idx/);
+  assert.match(migration, /validate_room_inventory_assignment/);
+  assert.match(migration, /ROOM_INVENTORY_INCOMPLETE/);
+  assert.match(migration, /audit_room_services/);
+  assert.match(migration, /audit_room_service_assignments/);
+  assert.doesNotMatch(migration, /private.?bath|baño privado/i);
+  assert.match(repository, /room_service_assignments/);
+  assert.match(repository, /set_room_operational_status/);
+  assert.match(validation, /baseRate: z\.coerce\.number\(\)\.positive/);
+  assert.match(validation, /quantity: z\.coerce\.number\(\)\.int\(\)\.min\(1\)/);
+  for (const page of [reservation, walkIn, roomsPage]) {
+    assert.match(page, /Todavía no hay habitaciones configuradas\. Completá el inventario desde Configuración\./);
+  }
+  assert.match(reservation, /mode === "demo" \? DEFAULT_REFERENCE_RATE_ARS/);
+  assert.match(walkIn, /mode === "demo" \? DEFAULT_REFERENCE_RATE_ARS/);
 });

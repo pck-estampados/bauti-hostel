@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useOperations } from "./components/operations-provider";
 import { AdminPageHeader, EmptyState, formatCurrency, formatDate, reservationStatusLabel, roomStatusLabel, StatusPill } from "./components/ui";
-import { dashboardSnapshot, formatGuestName } from "./lib/operations";
+import { dashboardSnapshot, formatGuestName, isRoomOperationallyAvailable } from "./lib/operations";
 
 export default function AdminDashboardPage() {
   const { state, mode } = useOperations();
   const snapshot = dashboardSnapshot(state);
   const guest = (id: string) => state.guests.find((item) => item.id === id);
   const room = (id?: string) => state.rooms.find((item) => item.id === id);
+  const canCreateStay = state.rooms.some((item) => isRoomOperationallyAvailable(item.status) && (mode === "demo" || item.inventoryValid));
 
   const metrics = [
     { label: "Huéspedes alojados", value: snapshot.currentGuests, tone: "ink" },
@@ -26,7 +27,7 @@ export default function AdminDashboardPage() {
         eyebrow="Hoy · operación en curso"
         title="Todo lo importante, a primera vista."
         description={mode === "demo" ? "Llegadas, salidas, ocupación y cobros pendientes del entorno de prueba." : "Llegadas, salidas, ocupación y cobros pendientes de la operación real."}
-        actions={<><Link className="admin-button admin-button--primary" href="/admin/walk-in">Registrar ingreso sin reserva</Link><Link className="admin-button admin-button--secondary" href="/admin/reservas/nueva">Nueva reserva</Link></>}
+        actions={canCreateStay ? <><Link className="admin-button admin-button--primary" href="/admin/walk-in">Registrar ingreso sin reserva</Link><Link className="admin-button admin-button--secondary" href="/admin/reservas/nueva">Nueva reserva</Link></> : <><span aria-disabled="true" className="admin-button admin-button--primary">Registrar ingreso sin reserva</span><span aria-disabled="true" className="admin-button admin-button--secondary">Nueva reserva</span></>}
       />
 
       <section className="admin-metric-grid" aria-label="Resumen de hoy">
@@ -43,7 +44,9 @@ export default function AdminDashboardPage() {
             ["/admin/check-out", "OU", "Hacer check-out", "Cerrar una estadía"],
             ["/admin/pagos/nuevo", "PA", "Registrar pago", "Actualizar un saldo"],
             ["/admin/notas", "NO", "Agregar nota", "Dejar contexto al equipo"],
-          ].map(([href, code, title, description]) => <Link className="admin-quick-action" href={href} key={href}><span>{code}</span><strong>{title}</strong><small>{description}</small><i aria-hidden="true">→</i></Link>)}
+          ].map(([href, code, title, description]) => href === "/admin/walk-in" && !canCreateStay
+            ? <div aria-disabled="true" className="admin-quick-action" key={href}><span>{code}</span><strong>{title}</strong><small>Requiere una habitación válida</small></div>
+            : <Link className="admin-quick-action" href={href} key={href}><span>{code}</span><strong>{title}</strong><small>{description}</small><i aria-hidden="true">→</i></Link>)}
         </div>
       </section>
 

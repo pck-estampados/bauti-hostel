@@ -63,6 +63,8 @@ export type Room = {
   code: string;
   displayName: string;
   capacity: number;
+  baseRate?: number;
+  inventoryValid?: boolean;
   status: RoomStatus;
   statusNote?: string;
   isDemo: boolean;

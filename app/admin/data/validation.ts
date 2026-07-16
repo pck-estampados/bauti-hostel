@@ -20,7 +20,7 @@ const stayFields = {
   roomId: uuidSchema,
   checkIn: isoDate,
   checkOut: isoDate,
-  nightlyRate: z.number().finite().min(0).max(100_000_000),
+  nightlyRate: z.number().finite().positive().max(100_000_000),
   amountPaid: z.number().finite().min(0).max(100_000_000),
   paymentMethod: z.enum(["cash", "transfer", "mercado_pago", "card", "other"]),
   notes: optionalText(4000),

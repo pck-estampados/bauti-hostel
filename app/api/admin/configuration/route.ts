@@ -72,11 +72,11 @@ export async function POST(request: NextRequest) {
         await repository.updateRoomType(operation.payload);
         break;
       case "createRoom":
-        requirePermissions(staff, "rooms.inventory_manage");
+        requirePermissions(staff, "rooms.inventory_manage", "rooms.manage");
         await repository.createRoom(operation.payload);
         break;
       case "updateRoom":
-        requirePermissions(staff, "rooms.inventory_manage");
+        requirePermissions(staff, "rooms.inventory_manage", "rooms.manage");
         await repository.updateRoom(operation.payload);
         break;
       case "createBed":
@@ -86,6 +86,14 @@ export async function POST(request: NextRequest) {
       case "updateBed":
         requirePermissions(staff, "rooms.inventory_manage");
         await repository.updateBed(operation.payload);
+        break;
+      case "createRoomService":
+        requirePermissions(staff, "rooms.inventory_manage");
+        await repository.createRoomService(operation.payload);
+        break;
+      case "saveRoomServices":
+        requirePermissions(staff, "rooms.inventory_manage");
+        await repository.saveRoomServices(operation.payload);
         break;
       case "saveUser":
         requirePermissions(staff, "staff.manage", "rbac.manage");

@@ -39,6 +39,17 @@ const profileStatusLabels = {
   disabled: "Deshabilitado",
 } as const;
 
+const progressStatusLabels = {
+  pending: "Pendiente",
+  incomplete: "Incompleto",
+  configured: "Configurado",
+} as const;
+
+const roomStatusOptions = [
+  "available", "reserved", "occupied", "ready", "clean", "pending_cleaning", "cleaning",
+  "maintenance", "blocked", "out_of_service",
+] as const;
+
 function value(form: FormData, name: string) {
   return String(form.get(name) ?? "").trim();
 }
@@ -84,6 +95,7 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
 
   const canManageSettings = currentUser.permissions.includes("settings.manage");
   const canManageInventory = currentUser.permissions.includes("rooms.inventory_manage");
+  const canManageRooms = canManageInventory && currentUser.permissions.includes("rooms.manage");
   const canManageUsers = currentUser.permissions.includes("staff.manage") && currentUser.permissions.includes("rbac.manage");
   const isOwner = currentUser.roles.includes("owner");
   const ownerHasFullAccess = isOwner && state.permissions.length > 0 && currentUser.permissions.length === state.permissions.length;
@@ -166,9 +178,11 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
     void mutate(roomType ? "updateRoomType" : "createRoomType", {
       ...(roomType ? { id: roomType.id } : {}),
       code: value(form, "code").toLowerCase(),
-      name: value(form, "name"),
+      internalName: value(form, "internalName"),
+      publicName: value(form, "publicName"),
       description: value(form, "description"),
       defaultCapacity: Number(value(form, "defaultCapacity")),
+      baseRate: Number(value(form, "baseRate")),
       active: checked(form, "active"),
     }, roomType ? "Tipo de habitación actualizado." : "Tipo de habitación creado.");
   }
@@ -183,6 +197,9 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
       code: value(form, "code"),
       displayName: value(form, "displayName"),
       capacity: Number(value(form, "capacity")),
+      status: room ? value(form, "status") : "out_of_service",
+      sector: value(form, "sector"),
+      internalNotes: value(form, "internalNotes"),
       active: checked(form, "active"),
     }, room ? "Habitación actualizada." : "Habitación creada fuera de servicio hasta su habilitación operativa.");
   }
@@ -195,9 +212,30 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
       roomId: value(form, "roomId"),
       code: value(form, "code"),
       bedType: value(form, "bedType"),
+      quantity: Number(value(form, "quantity")),
       capacity: Number(value(form, "capacity")),
       active: checked(form, "active"),
     }, bed ? "Cama actualizada." : "Cama creada.");
+  }
+
+  function submitRoomService(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    void mutate("createRoomService", {
+      code: value(form, "code").toLowerCase(),
+      name: value(form, "name"),
+      description: value(form, "description"),
+      active: checked(form, "active"),
+    }, "Servicio configurable creado.");
+  }
+
+  function submitRoomServices(event: FormEvent<HTMLFormElement>, roomId: string) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    void mutate("saveRoomServices", {
+      roomId,
+      serviceIds: form.getAll("serviceIds").map(String),
+    }, "Servicios de la habitación actualizados.");
   }
 
   function submitProfile(event: FormEvent<HTMLFormElement>, profile: ConfigurationProfile) {
@@ -216,6 +254,25 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
   const schedules = state.settings.schedules?.value;
   const price = state.settings.price?.value;
   const policies = state.settings.policies?.value;
+  const configuredRoomTypes = state.roomTypes.filter((item) => item.active && item.publicName && item.defaultCapacity > 0 && Number(item.baseRate) > 0);
+  const configuredRooms = state.rooms.filter((room) => room.active && room.roomTypeId && room.capacity > 0 && configuredRoomTypes.some((type) => type.id === room.roomTypeId));
+  const capacitiesConfigured = configuredRooms.length > 0 && configuredRooms.every((room) => {
+    const capacity = state.beds
+      .filter((bed) => bed.active && bed.roomId === room.id)
+      .reduce((total, bed) => total + (bed.quantity * bed.capacity), 0);
+    return capacity >= room.capacity;
+  });
+  const policyTextConfigured = Boolean(policies && Object.values(policies).every((text) => text.trim().length > 0));
+  const teamConfigured = state.profiles.some((profile) => profile.status === "active" && profile.roleIds.length > 0);
+  const progress = [
+    { label: "Datos generales", status: general ? "configured" : "pending" },
+    { label: "Políticas y horarios", status: schedules && policyTextConfigured ? "configured" : schedules || policies ? "incomplete" : "pending" },
+    { label: "Tipos de habitación", status: configuredRoomTypes.length ? "configured" : state.roomTypes.length ? "incomplete" : "pending" },
+    { label: "Habitaciones", status: configuredRooms.length ? "configured" : state.rooms.length ? "incomplete" : "pending" },
+    { label: "Camas y capacidades", status: capacitiesConfigured ? "configured" : state.beds.length ? "incomplete" : "pending" },
+    { label: "Usuarios del equipo", status: teamConfigured ? "configured" : state.profiles.length ? "incomplete" : "pending" },
+  ] as const;
+  const setupComplete = progress.every((step) => step.status === "configured");
 
   return (
     <>
@@ -232,9 +289,18 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
         <span className={`admin-access-verdict ${ownerHasFullAccess ? "admin-access-verdict--ok" : ""}`}>{ownerHasFullAccess ? "Owner con acceso completo" : "Acceso según rol"}</span>
       </section>
 
+      <section className="admin-setup-progress" aria-labelledby="setup-progress-title">
+        <div><p>Configuración inicial</p><h2 id="setup-progress-title">Avance del Hostel Bauti</h2><span>La operación queda bloqueada hasta contar con inventario, capacidad, horarios y políticas válidas.</span></div>
+        <ol>
+          {progress.map((step, index) => <li className={`admin-progress-step admin-progress-step--${step.status}`} key={step.label}><span>{String(index + 1).padStart(2, "0")}</span><strong>{step.label}</strong><small>{progressStatusLabels[step.status]}</small></li>)}
+          <li className={`admin-progress-step admin-progress-step--${setupComplete ? "configured" : "pending"}`}><span>07</span><strong>Configuración terminada</strong><small>{setupComplete ? "Configurado" : "Pendiente"}</small></li>
+        </ol>
+      </section>
+
       {message ? <p className="admin-feedback" role="status">{message}</p> : null}
       {error ? <p className="admin-form-error" role="alert">{error}</p> : null}
       {readOnly ? <p className="admin-form-error" role="alert">Esta vista es sólo informativa en modo demo. No se escriben datos reales.</p> : null}
+      {!state.inventorySchemaReady && mode === "production" ? <div className="admin-schema-notice" role="status"><strong>Ampliación de inventario pendiente</strong><span>La interfaz nueva está lista, pero los campos de tarifa, sector, cantidad y servicios se habilitarán después de aplicar la migración incremental revisada. No se ejecutó ninguna migración.</span></div> : null}
 
       <nav className="admin-config-index" aria-label="Secciones de configuración">
         <a href="#general">Información general</a>
@@ -244,6 +310,7 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
         <a href="#tipos">Tipos</a>
         <a href="#habitaciones">Habitaciones</a>
         <a href="#camas">Camas</a>
+        <a href="#servicios">Servicios</a>
         <a href="#equipo">Usuarios y roles</a>
       </nav>
 
@@ -309,16 +376,18 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
           <div className="admin-config-records">
             {state.roomTypes.map((roomType) => (
               <details className="admin-config-record" key={roomType.id}>
-                <summary><div><strong>{roomType.name}</strong><span>{roomType.code} · capacidad {roomType.defaultCapacity}</span></div><span>{roomType.active ? "Activo" : "Inactivo"}</span></summary>
+                <summary><div><strong>{roomType.publicName || roomType.internalName}</strong><span>{roomType.internalName} · {roomType.code} · capacidad {roomType.defaultCapacity}{roomType.baseRate ? ` · ${formatCurrency(roomType.baseRate)}` : ""}</span></div><span>{roomType.active ? "Activo" : "Inactivo"}</span></summary>
                 <form onSubmit={(event) => submitRoomType(event, roomType)}>
                   <div className="admin-field-grid">
                     <label>Código<input defaultValue={roomType.code} name="code" required /></label>
-                    <label>Nombre<input defaultValue={roomType.name} name="name" required /></label>
+                    <label>Nombre interno<input defaultValue={roomType.internalName} name="internalName" required /></label>
+                    <label>Nombre público<input defaultValue={roomType.publicName} name="publicName" required /></label>
                     <label>Capacidad estándar<input defaultValue={roomType.defaultCapacity} max="30" min="1" name="defaultCapacity" required type="number" /></label>
+                    <label>Tarifa base (ARS)<input defaultValue={roomType.baseRate ?? ""} min="1" name="baseRate" required step="1" type="number" /></label>
                     <label className="admin-check-field"><input defaultChecked={roomType.active} name="active" type="checkbox" /> Tipo activo</label>
                     <label className="admin-field--full">Descripción<textarea defaultValue={roomType.description} name="description" /></label>
                   </div>
-                  <FormActions busy={busy === "updateRoomType"} disabled={!canManageInventory || readOnly} />
+                  <FormActions busy={busy === "updateRoomType"} disabled={!canManageInventory || !state.inventorySchemaReady || readOnly} />
                 </form>
               </details>
             ))}
@@ -329,12 +398,14 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
           <form onSubmit={(event) => submitRoomType(event)}>
             <div className="admin-field-grid">
               <label>Código interno<input name="code" pattern="[a-z0-9][a-z0-9_-]{1,49}" required /></label>
-              <label>Nombre<input name="name" required /></label>
+              <label>Nombre interno<input name="internalName" required /></label>
+              <label>Nombre público<input name="publicName" required /></label>
               <label>Capacidad estándar<input max="30" min="1" name="defaultCapacity" required type="number" /></label>
+              <label>Tarifa base (ARS)<input min="1" name="baseRate" required step="1" type="number" /></label>
               <label className="admin-check-field"><input defaultChecked name="active" type="checkbox" /> Crear activo</label>
               <label className="admin-field--full">Descripción<textarea name="description" /></label>
             </div>
-            <FormActions busy={busy === "createRoomType"} disabled={!canManageInventory || readOnly} label="Crear tipo" />
+            <FormActions busy={busy === "createRoomType"} disabled={!canManageInventory || !state.inventorySchemaReady || readOnly} label="Crear tipo" />
           </form>
         </details>
       </section>
@@ -350,11 +421,14 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
                   <div className="admin-field-grid">
                     <label>Código<input defaultValue={room.code} name="code" required /></label>
                     <label>Nombre visible<input defaultValue={room.displayName} name="displayName" required /></label>
-                    <label>Tipo<select defaultValue={room.roomTypeId ?? ""} name="roomTypeId"><option value="">Sin tipo asignado</option>{state.roomTypes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+                    <label>Tipo<select defaultValue={room.roomTypeId ?? ""} name="roomTypeId"><option value="">Sin tipo asignado</option>{state.roomTypes.map((item) => <option key={item.id} value={item.id}>{item.publicName || item.internalName}</option>)}</select></label>
                     <label>Capacidad<input defaultValue={room.capacity} max="30" min="1" name="capacity" required type="number" /></label>
+                    <label>Planta o sector<input defaultValue={room.sector} name="sector" /></label>
+                    <label>Estado operativo<select defaultValue={room.status} name="status">{roomStatusOptions.map((status) => <option key={status} value={status}>{roomStatusLabel(status)}</option>)}</select></label>
+                    <label className="admin-field--full">Observaciones internas<textarea defaultValue={room.internalNotes} name="internalNotes" /></label>
                     <label className="admin-check-field admin-field--full"><input defaultChecked={room.active} name="active" type="checkbox" /> Habitación activa en el inventario</label>
                   </div>
-                  <FormActions busy={busy === "updateRoom"} disabled={!canManageInventory || readOnly} />
+                  <FormActions busy={busy === "updateRoom"} disabled={!canManageRooms || !state.inventorySchemaReady || readOnly} />
                 </form>
               </details>
             ))}
@@ -366,11 +440,14 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
             <div className="admin-field-grid">
               <label>Código<input name="code" required /></label>
               <label>Nombre visible<input name="displayName" required /></label>
-              <label>Tipo<select name="roomTypeId"><option value="">Sin tipo asignado</option>{state.roomTypes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+              <label>Tipo<select name="roomTypeId"><option value="">Sin tipo asignado</option>{state.roomTypes.map((item) => <option key={item.id} value={item.id}>{item.publicName || item.internalName}</option>)}</select></label>
               <label>Capacidad<input max="30" min="1" name="capacity" required type="number" /></label>
+              <label>Planta o sector<input name="sector" /></label>
+              <label>Estado operativo<input readOnly value="Fuera de servicio" /></label>
+              <label className="admin-field--full">Observaciones internas<textarea name="internalNotes" /></label>
               <label className="admin-check-field admin-field--full"><input defaultChecked name="active" type="checkbox" /> Crear activa en el inventario</label>
             </div>
-            <FormActions busy={busy === "createRoom"} disabled={!canManageInventory || readOnly} label="Crear habitación" />
+            <FormActions busy={busy === "createRoom"} disabled={!canManageRooms || !state.inventorySchemaReady || readOnly} label="Crear habitación" />
           </form>
         </details>
       </section>
@@ -381,22 +458,23 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
           <div className="admin-bed-groups">
             {state.rooms.map((room) => {
               const roomBeds = state.beds.filter((bed) => bed.roomId === room.id);
-              const activeCapacity = roomBeds.filter((bed) => bed.active).reduce((sum, bed) => sum + bed.capacity, 0);
+              const activeCapacity = roomBeds.filter((bed) => bed.active).reduce((sum, bed) => sum + (bed.quantity * bed.capacity), 0);
               return (
                 <article className="admin-bed-group" key={room.id}>
                   <header><div><strong>{room.displayName}</strong><span>{room.code}</span></div><span className={activeCapacity === room.capacity ? "is-balanced" : ""}>{activeCapacity} / {room.capacity} plazas</span></header>
                   {!roomBeds.length ? <p>Sin camas registradas para esta habitación.</p> : roomBeds.map((bed) => (
                     <details className="admin-bed-record" key={bed.id}>
-                      <summary><strong>{bed.code}</strong><span>{bedTypeLabels[bed.bedType]} · {bed.capacity} plaza{bed.capacity === 1 ? "" : "s"}</span></summary>
+                      <summary><strong>{bed.code}</strong><span>{bed.quantity} × {bedTypeLabels[bed.bedType]} · {bed.capacity} plaza{bed.capacity === 1 ? "" : "s"} cada una</span></summary>
                       <form onSubmit={(event) => submitBed(event, bed)}>
                         <input name="roomId" type="hidden" value={room.id} />
                         <div className="admin-field-grid">
                           <label>Código<input defaultValue={bed.code} name="code" required /></label>
                           <label>Tipo<select defaultValue={bed.bedType} name="bedType">{Object.entries(bedTypeLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
+                          <label>Cantidad<input defaultValue={bed.quantity} max="30" min="1" name="quantity" required type="number" /></label>
                           <label>Plazas<input defaultValue={bed.capacity} max="4" min="1" name="capacity" required type="number" /></label>
                           <label className="admin-check-field"><input defaultChecked={bed.active} name="active" type="checkbox" /> Cama activa</label>
                         </div>
-                        <FormActions busy={busy === "updateBed"} disabled={!canManageInventory || readOnly} />
+                        <FormActions busy={busy === "updateBed"} disabled={!canManageInventory || !state.inventorySchemaReady || readOnly} />
                       </form>
                     </details>
                   ))}
@@ -407,10 +485,11 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
                       <div className="admin-field-grid">
                         <label>Código<input name="code" required /></label>
                         <label>Tipo<select name="bedType">{Object.entries(bedTypeLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
+                        <label>Cantidad<input defaultValue="1" max="30" min="1" name="quantity" required type="number" /></label>
                         <label>Plazas<input defaultValue="1" max="4" min="1" name="capacity" required type="number" /></label>
                         <label className="admin-check-field"><input defaultChecked name="active" type="checkbox" /> Cama activa</label>
                       </div>
-                      <FormActions busy={busy === "createBed"} disabled={!canManageInventory || readOnly} label="Agregar cama" />
+                      <FormActions busy={busy === "createBed"} disabled={!canManageInventory || !state.inventorySchemaReady || readOnly} label="Agregar cama" />
                     </form>
                   </details>
                 </article>
@@ -418,6 +497,33 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
             })}
           </div>
         )}
+      </section>
+
+      <section className="admin-config-section" id="servicios">
+        <SectionHeading eyebrow="Comodidades reales" title="Servicios por habitación" description="Asigná únicamente servicios disponibles. El catálogo no incluye baño privado." status={<span className="admin-config-state">{state.services.length} servicios</span>} />
+        {!state.inventorySchemaReady ? <EmptyState title="Catálogo pendiente de migración" description="La migración incremental crea el catálogo de servicios y sus asignaciones con RLS y auditoría. No fue ejecutada durante esta revisión." /> : !state.rooms.length ? <EmptyState title="Primero configurá las habitaciones" description="Los servicios se asignan cuando existe al menos una habitación real." /> : (
+          <div className="admin-service-rooms">
+            {state.rooms.map((room) => (
+              <form className="admin-service-room" key={room.id} onSubmit={(event) => submitRoomServices(event, room.id)}>
+                <header><div><strong>{room.displayName}</strong><span>{room.code}{room.sector ? ` · ${room.sector}` : ""}</span></div><small>{room.serviceIds.length} asignados</small></header>
+                <fieldset><legend>Servicios disponibles</legend>{state.services.filter((service) => service.active).map((service) => <label key={service.id}><input defaultChecked={room.serviceIds.includes(service.id)} name="serviceIds" type="checkbox" value={service.id} /><span><strong>{service.name}</strong><small>{service.description || service.code}</small></span></label>)}</fieldset>
+                <FormActions busy={busy === "saveRoomServices"} disabled={!canManageInventory || readOnly} label="Guardar servicios" />
+              </form>
+            ))}
+          </div>
+        )}
+        <details className="admin-create-panel">
+          <summary>Crear otro servicio configurable</summary>
+          <form onSubmit={submitRoomService}>
+            <div className="admin-field-grid">
+              <label>Código<input name="code" pattern="[a-z][a-z0-9_]{1,49}" required /></label>
+              <label>Nombre<input name="name" required /></label>
+              <label className="admin-field--full">Descripción<textarea name="description" /></label>
+              <label className="admin-check-field admin-field--full"><input defaultChecked name="active" type="checkbox" /> Servicio activo</label>
+            </div>
+            <FormActions busy={busy === "createRoomService"} disabled={!canManageInventory || !state.inventorySchemaReady || readOnly} label="Crear servicio" />
+          </form>
+        </details>
       </section>
 
       <section className="admin-config-section" id="equipo">

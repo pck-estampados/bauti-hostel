@@ -75,6 +75,21 @@ test("keeps the availability handoff transparent", async () => {
   assert.doesNotMatch(html, /Reserva confirmada|Pago aprobado/);
 });
 
+test("server-renders the complete configuration experience without enabling writes in demo mode", async () => {
+  process.env.APP_MODE = "demo";
+  const response = await render("/admin/configuracion");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /Avance del Hostel Bauti/);
+  assert.match(html, /Configuraci.n terminada/);
+  assert.match(html, /Tipos de habitaci.n/);
+  assert.match(html, /Camas y capacidades/);
+  assert.match(html, /Servicios por habitaci.n/);
+  assert.match(html, /Usuarios y roles/);
+  assert.match(html, /Esta vista es s.lo informativa en modo demo/);
+  assert.match(html, /no incluye ba.o privado/i);
+});
+
 test("server-renders the isolated operational dashboard in explicit demo mode", async () => {
   process.env.APP_MODE = "demo";
   const response = await render("/admin");

@@ -23,9 +23,11 @@ import {
 } from "./validation";
 
 type RoomRow = {
-  id: string; code: string; display_name: string; capacity: number;
+  id: string; room_type_id: string | null; code: string; display_name: string; capacity: number;
   status: Room["status"]; status_note: string | null;
 };
+type RoomRateRow = { id: string; base_rate: number | null };
+type BedCapacityRow = { room_id: string; capacity: number; quantity?: number; active: boolean };
 type GuestRow = {
   id: string; first_name: string; last_name: string; phone: string;
   document_number: string | null; email: string | null; created_at: string;
@@ -70,17 +72,58 @@ function assertNoError(error: { message: string } | null, fallback: string): voi
     PAYMENT_EXCEEDS_BALANCE: "El pago supera el saldo pendiente.",
     OUTSTANDING_BALANCE: "La reserva todavía tiene saldo pendiente.",
   };
+  if (error.message.includes("ROOM_INVENTORY_INCOMPLETE")) {
+    throw new Error("La habitación necesita tipo, tarifa y capacidad de camas válidos.");
+  }
   const known = Object.entries(messages).find(([code]) => error.message.includes(code));
   throw new Error(known?.[1] ?? fallback);
+}
+
+function isInventoryMigrationPending(error: { code?: string; message: string } | null): boolean {
+  if (!error) return false;
+  return ["42703", "PGRST204"].includes(error.code ?? "") || /base_rate|quantity/i.test(error.message);
 }
 
 export class SupabaseOperationsRepository implements OperationsRepository {
   constructor(private readonly client: SupabaseClient) {}
 
+  private async assertRoomInventoryReady(roomId: string): Promise<void> {
+    const roomResult = await this.client
+      .from("rooms")
+      .select("room_type_id,capacity,active")
+      .eq("id", roomId)
+      .single();
+    assertNoError(roomResult.error, "No fue posible validar la habitación seleccionada.");
+
+    const room = roomResult.data as { room_type_id: string | null; capacity: number; active: boolean } | null;
+    if (!room?.active || !room.room_type_id) {
+      throw new Error("La habitación seleccionada no tiene un tipo activo y una capacidad válida.");
+    }
+
+    const [roomTypeResult, bedsResult] = await Promise.all([
+      this.client.from("room_types").select("base_rate,active").eq("id", room.room_type_id).single(),
+      this.client.from("beds").select("capacity,quantity").eq("room_id", roomId).eq("active", true),
+    ]);
+    if (isInventoryMigrationPending(roomTypeResult.error) || isInventoryMigrationPending(bedsResult.error)) {
+      throw new Error("El inventario todavía no está listo. Completá la configuración antes de crear reservas.");
+    }
+    assertNoError(roomTypeResult.error, "No fue posible validar el tipo de habitación.");
+    assertNoError(bedsResult.error, "No fue posible validar las camas de la habitación.");
+
+    const roomType = roomTypeResult.data as { base_rate: number | null; active: boolean } | null;
+    const bedCapacity = ((bedsResult.data ?? []) as Array<{ capacity: number; quantity: number }>).reduce(
+      (total, bed) => total + (Number(bed.capacity) * Number(bed.quantity)),
+      0,
+    );
+    if (!roomType?.active || Number(roomType.base_rate ?? 0) <= 0 || bedCapacity < room.capacity) {
+      throw new Error("La habitación seleccionada necesita tipo, tarifa y capacidad de camas válidos.");
+    }
+  }
+
   async loadSnapshot(): Promise<OperationsState> {
-    const [roomsResult, guestsResult, reservationsResult, financialsResult, paymentsResult, notesResult, issuesResult, activityResult] =
+    const [roomsResult, guestsResult, reservationsResult, financialsResult, paymentsResult, notesResult, issuesResult, activityResult, roomRatesResult, bedCapacityResult] =
       await Promise.all([
-        this.client.from("rooms").select("id, code, display_name, capacity, status, status_note").eq("active", true).order("code"),
+        this.client.from("rooms").select("id, room_type_id, code, display_name, capacity, status, status_note").eq("active", true).order("code"),
         this.client.from("guests").select("id, first_name, last_name, phone, document_number, email, created_at").is("deleted_at", null).order("created_at", { ascending: false }),
         this.client.from("reservations").select("id, code, primary_guest_id, guest_count, check_in, check_out, expected_arrival, nightly_rate, agreed_total, status, source, internal_summary, actual_check_in_at, actual_check_out_at, created_at, created_by, room_assignments(room_id,status)").is("deleted_at", null).order("created_at", { ascending: false }),
         this.client.from("reservation_financials").select("reservation_id, paid_total, balance"),
@@ -88,10 +131,24 @@ export class SupabaseOperationsRepository implements OperationsRepository {
         this.client.from("internal_notes").select("id, entity_type, entity_id, body, created_by, created_at").is("deleted_at", null).order("created_at", { ascending: false }),
         this.client.from("maintenance_issues").select("id, room_id, area, title, priority, status").order("created_at", { ascending: false }),
         this.client.from("activity_logs").select("id, action, entity_type, entity_id, actor_id, created_at, summary").order("created_at", { ascending: false }).limit(200),
+        this.client.from("room_types").select("id,base_rate").eq("active", true),
+        this.client.from("beds").select("room_id,capacity,quantity,active").eq("active", true),
       ]);
 
     for (const result of [roomsResult, guestsResult, reservationsResult, financialsResult, paymentsResult, notesResult, issuesResult, activityResult]) {
       assertNoError(result.error, "No fue posible cargar la operación del hostel.");
+    }
+    if (roomRatesResult.error && !isInventoryMigrationPending(roomRatesResult.error)) {
+      assertNoError(roomRatesResult.error, "No fue posible cargar las tarifas del inventario.");
+    }
+    let bedCapacityRows = (bedCapacityResult.data ?? []) as BedCapacityRow[];
+    if (bedCapacityResult.error) {
+      if (!isInventoryMigrationPending(bedCapacityResult.error)) {
+        assertNoError(bedCapacityResult.error, "No fue posible validar las capacidades del inventario.");
+      }
+      const fallbackBeds = await this.client.from("beds").select("room_id,capacity,active").eq("active", true);
+      assertNoError(fallbackBeds.error, "No fue posible validar las capacidades del inventario.");
+      bedCapacityRows = (fallbackBeds.data ?? []) as BedCapacityRow[];
     }
 
     const financials = new Map(
@@ -127,10 +184,17 @@ export class SupabaseOperationsRepository implements OperationsRepository {
       };
     });
     const reservationGuest = new Map(reservations.map((item) => [item.id, item.primaryGuestId]));
+    const roomRates = new Map(((roomRatesResult.data ?? []) as RoomRateRow[]).map((row) => [row.id, Number(row.base_rate ?? 0)]));
+    const bedCapacityByRoom = new Map<string, number>();
+    for (const bed of bedCapacityRows) {
+      bedCapacityByRoom.set(bed.room_id, (bedCapacityByRoom.get(bed.room_id) ?? 0) + (Number(bed.quantity ?? 1) * Number(bed.capacity)));
+    }
 
     return {
       rooms: ((roomsResult.data ?? []) as RoomRow[]).map((row) => ({
         id: row.id, code: row.code, displayName: row.display_name, capacity: row.capacity,
+        baseRate: row.room_type_id ? roomRates.get(row.room_type_id) || undefined : undefined,
+        inventoryValid: Boolean(row.room_type_id && (roomRates.get(row.room_type_id) ?? 0) > 0 && (bedCapacityByRoom.get(row.id) ?? 0) >= row.capacity),
         status: row.status, statusNote: row.status_note ?? undefined, isDemo: false,
       })),
       guests: ((guestsResult.data ?? []) as GuestRow[]).map<Guest>((row) => ({
@@ -171,6 +235,7 @@ export class SupabaseOperationsRepository implements OperationsRepository {
 
   async createWalkIn(input: Parameters<OperationsRepository["createWalkIn"]>[0]) {
     const payload = walkInInputSchema.parse(input);
+    await this.assertRoomInventoryReady(payload.roomId);
     const { error } = await this.client.rpc("create_walk_in", { p_payload: payload });
     assertNoError(error, "No fue posible completar el walk-in.");
     return this.loadSnapshot();
@@ -178,6 +243,7 @@ export class SupabaseOperationsRepository implements OperationsRepository {
 
   async createReservation(input: Parameters<OperationsRepository["createReservation"]>[0]) {
     const payload = reservationInputSchema.parse(input);
+    await this.assertRoomInventoryReady(payload.roomId);
     const { error } = await this.client.rpc("create_reservation", { p_payload: payload });
     assertNoError(error, "No fue posible crear la reserva.");
     return this.loadSnapshot();

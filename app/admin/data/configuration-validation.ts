@@ -40,11 +40,18 @@ export const policySettingsSchema = z.object({
 export const roomTypeInputSchema = z.object({
   id: uuid.optional(),
   code: z.string().trim().regex(/^[a-z0-9][a-z0-9_-]{1,49}$/),
-  name: required(2, 100),
+  internalName: required(2, 100),
+  publicName: required(2, 120),
   description: trimmed(500),
   defaultCapacity: z.coerce.number().int().min(1).max(30),
+  baseRate: z.coerce.number().positive().max(100_000_000),
   active: z.boolean(),
 });
+
+const roomStatusSchema = z.enum([
+  "available", "reserved", "occupied", "pending_cleaning", "cleaning",
+  "clean", "ready", "maintenance", "blocked", "out_of_service",
+]);
 
 export const roomInputSchema = z.object({
   id: uuid.optional(),
@@ -52,6 +59,9 @@ export const roomInputSchema = z.object({
   code: required(1, 30),
   displayName: required(1, 100),
   capacity: z.coerce.number().int().min(1).max(30),
+  status: roomStatusSchema,
+  sector: trimmed(100),
+  internalNotes: trimmed(2_000),
   active: z.boolean(),
 });
 
@@ -60,8 +70,21 @@ export const bedInputSchema = z.object({
   roomId: uuid,
   code: required(1, 40),
   bedType: z.enum(["single", "double", "bunk_single", "crib", "other"]),
+  quantity: z.coerce.number().int().min(1).max(30),
   capacity: z.coerce.number().int().min(1).max(4),
   active: z.boolean(),
+});
+
+export const roomServiceInputSchema = z.object({
+  code: z.string().trim().regex(/^[a-z][a-z0-9_]{1,49}$/),
+  name: required(2, 100),
+  description: trimmed(500),
+  active: z.boolean(),
+});
+
+export const roomServiceAssignmentSchema = z.object({
+  roomId: uuid,
+  serviceIds: z.array(uuid).max(50),
 });
 
 export const profileInputSchema = z.object({
@@ -79,10 +102,12 @@ export const configurationOperationSchema = z.discriminatedUnion("operation", [
   z.object({ operation: z.literal("updatePolicies"), payload: policySettingsSchema }),
   z.object({ operation: z.literal("createRoomType"), payload: roomTypeInputSchema.omit({ id: true }) }),
   z.object({ operation: z.literal("updateRoomType"), payload: roomTypeInputSchema.required({ id: true }) }),
-  z.object({ operation: z.literal("createRoom"), payload: roomInputSchema.omit({ id: true }) }),
+  z.object({ operation: z.literal("createRoom"), payload: roomInputSchema.omit({ id: true }).extend({ status: z.literal("out_of_service") }) }),
   z.object({ operation: z.literal("updateRoom"), payload: roomInputSchema.required({ id: true }) }),
   z.object({ operation: z.literal("createBed"), payload: bedInputSchema.omit({ id: true }) }),
   z.object({ operation: z.literal("updateBed"), payload: bedInputSchema.required({ id: true }) }),
+  z.object({ operation: z.literal("createRoomService"), payload: roomServiceInputSchema }),
+  z.object({ operation: z.literal("saveRoomServices"), payload: roomServiceAssignmentSchema }),
   z.object({ operation: z.literal("saveUser"), payload: profileInputSchema }),
 ]);
 

@@ -31,7 +31,15 @@ function AdminNavigation({ mobile = false }: { mobile?: boolean }) {
   );
 }
 
-export function AdminShell({ children, userName }: { children: ReactNode; userName: string }) {
+export function AdminShell({
+  children,
+  userName,
+  mode,
+}: {
+  children: ReactNode;
+  userName: string;
+  mode: "demo" | "production";
+}) {
   const { resetDemo } = useOperations();
   return (
     <div className="admin-app">
@@ -43,7 +51,11 @@ export function AdminShell({ children, userName }: { children: ReactNode; userNa
         <AdminNavigation />
         <div className="admin-sidebar__bottom">
           <Link href="/" target="_blank">Ver sitio público ↗</Link>
-          <button type="button" onClick={resetDemo}>Restablecer datos demo</button>
+          {mode === "demo" ? (
+            <button type="button" onClick={resetDemo}>Restablecer datos demo</button>
+          ) : (
+            <form action="/auth/signout" method="post"><button type="submit">Cerrar sesión</button></form>
+          )}
         </div>
       </aside>
 
@@ -59,14 +71,16 @@ export function AdminShell({ children, userName }: { children: ReactNode; userNa
           </div>
           <div className="admin-user">
             <span>{userName.slice(0, 1).toUpperCase()}</span>
-            <div><strong>{userName}</strong><small>Recepción · demo</small></div>
+            <div><strong>{userName}</strong><small>{mode === "demo" ? "Recepción · demo" : "Equipo interno"}</small></div>
           </div>
         </header>
 
-        <div className="admin-demo-banner" role="status">
-          <strong>Entorno de prueba</strong>
-          <span>Todos los huéspedes, habitaciones, importes y operaciones del panel son ficticios. Los cambios se descartan al recargar.</span>
-        </div>
+        {mode === "demo" ? (
+          <div className="admin-demo-banner" role="status">
+            <strong>Entorno de prueba</strong>
+            <span>Todos los huéspedes, habitaciones, importes y operaciones del panel son ficticios. Los cambios se descartan al recargar.</span>
+          </div>
+        ) : null}
 
         <main className="admin-content">{children}</main>
       </div>

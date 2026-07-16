@@ -11,8 +11,8 @@ export default function RoomsNowPage() {
   const [message, setMessage] = useState("");
   const activeByRoom = new Map(state.reservations.filter((item) => item.roomId && item.status === "accommodated").map((item) => [item.roomId, item]));
 
-  function change(id: string, status: RoomStatus) {
-    try { changeRoomStatus(id, status); setMessage("Estado actualizado en el entorno de prueba."); }
+  async function change(id: string, status: RoomStatus) {
+    try { await changeRoomStatus(id, status); setMessage("Estado actualizado."); }
     catch (error) { setMessage(error instanceof Error ? error.message : "No fue posible actualizar."); }
   }
 

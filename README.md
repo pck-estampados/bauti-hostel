@@ -1,7 +1,7 @@
 # Hostel Bauti
 
 Plataforma web y operativa de Hostel Bauti, en Ezeiza. Incluye la experiencia
-pública y una primera versión funcional del panel de administración.
+pública aprobada y el panel privado de administración.
 
 ## Requisitos
 
@@ -16,39 +16,37 @@ npm run dev
 ```
 
 La aplicación queda disponible en `http://localhost:3000`. El script de inicio
-es multiplataforma: configura Wrangler desde Node y funciona en Windows, macOS
-y Linux sin sintaxis específica del shell.
+es multiplataforma y configura Wrangler desde Node.
 
 ## Comandos
 
 ```bash
 npm run dev       # servidor local
 npm run build     # build de producción con vinext
-npm test          # build y pruebas de renderizado
+npm test          # build y pruebas de renderizado/seguridad estructural
 npm run lint      # análisis estático
 ```
 
 ## Estado actual
 
-- Home pública responsive.
-- Presentación real de habitaciones privadas sin publicar inventario no confirmado.
-- Buscador de fechas que prepara una consulta dinámica completa para WhatsApp.
-- Servicios, espacios confirmados, mapa real, ubicación, preguntas frecuentes,
-  contacto y páginas legales iniciales.
-- Metadata, datos estructurados, sitemap y robots.
-- Dashboard operativo responsive en `/admin` con datos de prueba aislados.
-- Habitaciones en tiempo real, huéspedes alojados, reservas, walk-in, check-in,
-  check-out, pagos, saldos y notas internas.
-- Transiciones funcionales en memoria para validar los flujos antes de conectar
-  la base de datos definitiva.
-- Autenticación obligatoria en producción mediante la identidad provista por la
-  plataforma; bypass de datos demo únicamente en desarrollo local.
-- La base D1/Drizzle del starter está vacía y no se usa en producción.
-- Supabase aún no está conectado porque requiere proyecto y credenciales.
+- Sitio público responsive, rutas comerciales y legales, metadata, sitemap y robots.
+- Panel operativo responsive en `/admin` con backend demo o Supabase seleccionable.
+- Habitaciones, huéspedes, reservas, walk-in, check-in, check-out, pagos, saldos,
+  limpieza y notas internas.
+- Transiciones funcionales en memoria para demo y RPC PostgreSQL atómicas para producción.
+- Supabase Auth SSR, RBAC, RLS, validación Zod, control de origen, rate limit y auditoría.
+- Migraciones versionadas para el modelo operacional; no contienen habitaciones,
+  camas, huéspedes, reservas ni pagos ficticios.
+- Adaptadores separados para demo y Supabase bajo un contrato común.
+- La base D1/Drizzle del starter permanece sin enlazar y no es fuente de verdad.
 
-Los cambios realizados dentro del panel demo se descartan al recargar. No debe
-utilizarse para almacenar datos personales reales hasta conectar persistencia,
-RBAC server-side y políticas de acceso en la base de datos.
+La integración Supabase está preparada y pendiente de credenciales, aplicación
+de migraciones y verificación contra el proyecto real. Esta fase incompleta no
+se desplegó.
 
-La arquitectura, el modelo de datos propuesto y el roadmap están documentados
+Los cambios dentro de `APP_MODE=demo` se descartan al recargar. No debe usarse
+para datos reales. Consultar `docs/supabase-setup.md` antes de activar
+`APP_MODE=production`.
+
+La arquitectura, la auditoría, el modelo de datos y el roadmap están documentados
 en `docs/`.

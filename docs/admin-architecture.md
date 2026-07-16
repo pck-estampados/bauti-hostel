@@ -1,50 +1,46 @@
 # Panel operativo
 
-## Auditoría previa
+## Límites de ejecución
 
-Antes de esta etapa no existían rutas administrativas, dashboard, componentes
-internos ni lógica de operación. La web pública estaba completa y se mantuvo sin
-cambios visuales. El esquema Drizzle/D1 continúa vacío para no crear una segunda
-fuente de verdad incompatible con la futura decisión de Supabase/PostgreSQL.
+La experiencia pública sigue separada de `/admin`. El panel conserva su shell,
+componentes, rutas y estilos. `APP_MODE` selecciona el backend:
 
-## Estructura implementada
+- `demo`: datos ficticios de `demo-data.ts`, mutaciones puras en memoria y aviso
+  visual permanente;
+- `production`: Supabase Auth, snapshot PostgreSQL real y mutaciones server-side.
 
-- `app/admin/layout.tsx`: límite protegido del panel y layout independiente.
-- `app/admin/components`: shell responsive, proveedor del estado operativo y UI.
-- `app/admin/lib/types.ts`: contratos de habitaciones, huéspedes, reservas,
-  pagos, notas, incidencias y auditoría.
-- `app/admin/lib/operations.ts`: reglas y transiciones puras del dominio.
-- `app/admin/lib/demo-data.ts`: único lugar con datos ficticios, identificados
-  mediante nombres y códigos `DEMO`.
-- Rutas separadas para dashboard, habitaciones, huéspedes actuales, reservas,
-  walk-in, check-in, check-out, pagos y notas.
+No existe fallback automático de producción a demo. Una configuración incompleta
+falla de forma explícita antes de exponer un panel engañoso.
 
-## Flujos funcionales
+## Flujo productivo
 
-- Walk-in: valida habitación y capacidad, crea huésped y reserva, registra pago
-  inicial, hace check-in, ocupa la habitación y crea auditoría.
-- Reserva manual: copia la tarifa aplicada, calcula total y saldo, registra el
-  origen y reserva la habitación.
-- Check-in: valida el estado de reserva y habitación, registra hora real, aloja
-  al huésped y ocupa la habitación.
-- Check-out: obliga a revisar saldos, registra hora real y envía la habitación a
-  pendiente de limpieza.
-- Pago: impide importes negativos o superiores al saldo y actualiza el estado
-  financiero de la reserva.
-- Habitación: permite recorrer el ciclo pendiente de limpieza, en limpieza,
-  limpia y lista.
+1. `app/admin/layout.tsx` valida variables y exige una sesión de empleado activa.
+2. `SupabaseOperationsRepository` carga el snapshot inicial respetando RLS.
+3. El proveedor de UI mantiene la misma API para todos los componentes.
+4. Cada mutación se envía a `/api/admin/operations`.
+5. El servidor valida origen, sesión y payload Zod.
+6. El repositorio invoca RPC transaccionales o escrituras protegidas por RLS.
+7. PostgreSQL registra historia y auditoría; luego se devuelve un snapshot nuevo.
 
-## Límite del modo demo
+## Seguridad
 
-El estado se mantiene únicamente mientras no se recargue la aplicación. Es una
-simulación funcional para probar la operación, no una fuente de verdad. No usa
-`localStorage` ni almacena datos personales reales. El panel publicado exige
-autenticación; la identidad del entorno no sustituye el RBAC definitivo.
+- La publicable key identifica el proyecto, pero los datos se autorizan con la
+  sesión del usuario y RLS.
+- La Secret key/service role solo puede importarse desde un módulo `server-only`.
+- Los roles iniciales son `owner`, `admin`, `reception`, `housekeeping` y
+  `maintenance`.
+- Limpieza y mantenimiento no reciben permisos de huéspedes, reservas ni pagos.
+- Los usuarios nuevos quedan `pending` y sin rol.
+- Los RPC aplican permisos, rate limit, locks, reglas de capacidad, pagos y
+  disponibilidad antes de escribir.
+- La ruta de mutación agrega control de mismo origen para sesiones en cookies.
 
-## Conexión productiva posterior
+## Integridad operacional
 
-Las funciones de `operations.ts` definen las invariantes que deberán ejecutarse
-en transacciones del servidor. PostgreSQL deberá impedir solapamientos mediante
-rangos semiabiertos `[check_in, check_out)`, aplicar RLS, registrar auditoría y
-autorizar cada operación en servidor. Los formularios y vistas actuales podrán
-conectarse a Server Actions o Route Handlers sin rediseñar la interfaz.
+- Los saldos se derivan de `agreed_total` y movimientos de `payments`; no se
+  guardan acumuladores editables.
+- Un exclusion constraint y un lock por habitación evitan carreras entre reservas.
+- Un trigger cruza asignaciones con bloqueos para impedir doble ocupación.
+- Check-out con saldo pendiente se rechaza.
+- Check-out crea una tarea de limpieza y pasa la habitación a pendiente.
+- Los timestamps se almacenan con zona y la fecha hotelera usa Buenos Aires.

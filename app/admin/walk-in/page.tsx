@@ -18,9 +18,9 @@ export default function WalkInPage() {
   const total = nights * Number(form.nightlyRate || 0);
   const balance = Math.max(total - Number(form.amountPaid || 0), 0);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError("");
-    try { addWalkIn(form); router.push("/admin/huespedes/actuales?created=walk-in"); }
+    try { await addWalkIn(form); router.push("/admin/huespedes/actuales?created=walk-in"); }
     catch (caught) { setError(caught instanceof Error ? caught.message : "No fue posible registrar el ingreso."); }
   }
 

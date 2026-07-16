@@ -75,18 +75,9 @@ test("keeps the availability handoff transparent", async () => {
   assert.doesNotMatch(html, /Reserva confirmada|Pago aprobado/);
 });
 
-test("protects the administration surface in production", async () => {
+test("server-renders the isolated operational dashboard in explicit demo mode", async () => {
+  process.env.APP_MODE = "demo";
   const response = await render("/admin");
-  assert.ok([302, 303, 307, 308].includes(response.status));
-  assert.match(response.headers.get("location") ?? "", /\/signin-with-chatgpt\?return_to=/);
-});
-
-test("server-renders the operational dashboard for an authenticated user", async () => {
-  const response = await render("/admin", {
-    "oai-authenticated-user-email": "david@example.test",
-    "oai-authenticated-user-full-name": "David%20Prueba",
-    "oai-authenticated-user-full-name-encoding": "percent-encoded-utf-8",
-  });
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /Todo lo importante, a primera vista/);

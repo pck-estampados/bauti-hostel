@@ -1,81 +1,71 @@
-# Modelo de datos propuesto
+# Modelo de datos de Fase 2
 
-## Identidad y permisos
+## Identidad y autorización
 
-- `profiles`: extensión 1:1 de `auth.users`, datos básicos y estado.
-- `roles`: roles configurables (`owner`, `admin`, `reception`, `housekeeping`,
-  `maintenance`, `customer`).
-- `permissions`: acciones atómicas por recurso.
-- `role_permissions`: permisos asignados a cada rol.
-- `user_roles`: roles por establecimiento y usuario.
+- `profiles`: extensión 1:1 de `auth.users`, con estado `pending`, `active` o
+  `disabled`.
+- `roles`, `permissions`, `role_permissions`, `user_roles`: RBAC propio; ningún
+  permiso se toma de metadata editable por el usuario.
+- Roles iniciales: propietario, administrador, recepción, limpieza y mantenimiento.
 
 ## Inventario
 
-- `properties`: permite escalar a más de un establecimiento sin duplicar el
-  modelo; inicialmente contiene Hostel Bauti.
-- `room_types`: descripción pública y reglas generales.
-- `rooms`: unidad física reservable, código interno, estado y publicación.
-- `beds`: configuración versionable de camas por habitación.
-- `amenities` y `room_amenities`: catálogo y relación con habitaciones.
-- `media` y `room_media`: archivos, textos alternativos, portada y orden.
-- `room_status_history`: historial operativo.
-- `availability_blocks`: bloqueos manuales, mantenimiento y cierre comercial.
+- `room_types`, `rooms`, `beds`: inventario confirmado y estado operativo.
+- `availability_blocks`: cierres por mantenimiento u operación.
+- `room_status_history`: trazabilidad de cada cambio de estado.
+
+Las tablas de inventario nacen vacías. Los roles y permisos son configuración
+del sistema, no contenido ficticio.
 
 ## Personas y estadías
 
-- `guests`: datos mínimos del huésped, con información sensible separable.
-- `reservations`: cabecera, fechas, totales, estado, origen y snapshots de
-  tarifa.
-- `reservation_rooms`: habitación asignada y rango ocupado; permite futuras
-  reservas con varias habitaciones.
-- `reservation_guests`: acompañantes y titularidad.
-- `reservation_status_history`: transición, responsable y motivo.
-- `pre_checkins`: datos previos a llegada y consentimiento.
+- `guests`: datos mínimos del huésped, con baja lógica e índices normalizados.
+- `reservations`: cabecera, fechas, origen, tarifa aplicada y total acordado.
+- `reservation_guests`: titular y acompañantes.
+- `room_assignments`: habitación y rango ocupado.
+- `reservation_status_history`: cambios de estado con actor y motivo.
 
-## Comercial
+## Finanzas
 
-- `rate_plans`: tarifa base y condiciones generales.
-- `pricing_rules`: temporada, día, ocupación, anticipación y estadía mínima.
-- `promotions` y `promotion_rooms`: alcance y vigencia.
-- `promo_codes` y `promo_redemptions`: códigos y control de uso.
-- `payments`: movimientos, moneda, medio, estado y referencia.
-- `payment_files`: comprobantes en Storage.
-- `inquiries`: leads y motivo de pérdida.
+- `payments`: movimientos inmutables de cobro o devolución, con posibilidad de
+  anulación auditada.
+- `reservation_financials`: vista `security_invoker` que deriva pagado y saldo.
 
-## Operación
+No existen columnas editables `paid` o `balance` en reservas. El saldo siempre
+se recalcula desde el total acordado y los movimientos vigentes.
 
-- `housekeeping_tasks`: estado, asignación, inicio, fin y notas.
-- `maintenance_issues`: zona o habitación, categoría, prioridad y bloqueo.
-- `staff_notes`: observaciones internas con visibilidad controlada.
-- `messages`: registro de comunicaciones.
-- `notifications`: email, WhatsApp o notificación interna.
+## Operación y control
 
-## Contenido y control
+- `housekeeping_tasks`: tareas y ciclo de limpieza.
+- `maintenance_issues`: incidencias, prioridad, asignación y bloqueo de inventario.
+- `internal_notes`: notas internas con alcance controlado.
+- `activity_logs`: eventos legibles por operación.
+- `audit_logs`: valores anteriores y posteriores de cambios sensibles.
+- `settings`: configuración tipada como JSON, pública solo cuando se marca así.
 
-- `site_settings`: contacto, horarios, tarifa de referencia y flags.
-- `pages`, `faq`, `testimonials`: CMS; testimonios solo se publican tras revisión.
-- `audit_logs`: actor, acción, recurso, valores previos/nuevos, IP y fecha.
+## Integridad y concurrencia
 
-## Constraints e índices esenciales
-
-- `check_out > check_in`.
-- Cantidades y montos no negativos.
+- `check_out > check_in`, capacidades positivas y montos no negativos.
 - Moneda ISO; inicialmente `ARS`.
-- Códigos de reserva y habitación únicos por establecimiento.
-- Índices en fechas, estados, habitación, huésped y origen.
-- Un exclusion constraint PostgreSQL impide solapamientos activos por
-  habitación usando `daterange(check_in, check_out, '[)')`.
-- Estados cancelados, rechazados y no-show se excluyen del constraint mediante
-  una condición parcial.
-- Los bloqueos se validan en la misma función transaccional que confirma la
-  reserva para evitar condiciones de carrera.
+- Códigos de reserva y habitación únicos.
+- Rango PostgreSQL semiabierto `[check_in, check_out)`.
+- Exclusion constraint GiST por habitación para asignaciones y bloqueos.
+- Advisory lock transaccional por habitación para serializar la validación entre
+  ambas tablas y evitar carreras.
+- Walk-in, reserva, check-in, check-out, pago y cambio operativo como RPC con
+  permisos y rate limit.
+- Fecha hotelera calculada en `America/Argentina/Buenos_Aires`; timestamps en
+  `timestamptz`.
 
-## RLS inicial
+## RLS
 
-- Público: solo contenido e inventario publicados.
-- Cliente: únicamente su perfil, huéspedes autorizados y reservas propias.
-- Limpieza: tareas asignadas y datos mínimos de habitación; sin finanzas.
-- Mantenimiento: incidencias asignadas y ubicación; sin datos de huéspedes.
-- Recepción: reservas, huéspedes y pagos según permiso.
-- Propietario/administrador: acceso definido por rol y establecimiento.
-- Auditoría: inserción mediante funciones seguras; lectura restringida.
+- `anon`: no accede a datos operativos; solo puede leer settings expresamente
+  públicos.
+- recepción: habitaciones, huéspedes, reservas, pagos y notas.
+- limpieza: habitaciones y tareas de limpieza, sin datos personales ni finanzas.
+- mantenimiento: ubicaciones e incidencias, sin huéspedes ni pagos.
+- administración: operación y personal según permiso.
+- propietario: control total y lectura de auditoría.
+
+Todas las tablas sensibles tienen RLS. Las funciones auxiliares con
+`security definer` viven en el esquema no expuesto `private`.

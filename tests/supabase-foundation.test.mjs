@@ -171,3 +171,67 @@ test("exposes only the typed public-site RPC without generic anonymous settings 
   assert.doesNotMatch(repository, /createSupabaseAdminClient|SUPABASE_(?:SECRET|SERVICE_ROLE)/);
   assert.doesNotMatch(site, /NEXT_PUBLIC_BASE_PRICE_ARS|50_000|50000/);
 });
+
+test("adds a least-privilege media gallery, public bucket and redacted audit without seeds", async () => {
+  const [migration, repository, api, publicGallery, nextConfig, validation, client, documentation] = await Promise.all([
+    read("supabase/migrations/20260716072901_media_gallery.sql"),
+    read("app/admin/data/supabase-media-repository.ts"),
+    read("app/api/admin/media/route.ts"),
+    read("app/lib/public-gallery.ts"),
+    read("next.config.ts"),
+    read("app/lib/media-validation.ts"),
+    read("app/admin/galeria/media-console.tsx"),
+    read("docs/media-gallery.md"),
+  ]);
+
+  assert.match(migration, /create table if not exists public\.media_assets/i);
+  assert.match(migration, /size_bytes between 1 and 6291456/i);
+  assert.match(migration, /width::bigint \* height::bigint <= 50000000/i);
+  assert.match(
+    migration,
+    /category in \(\s*'exterior', 'recepcion', 'habitacion', 'pileta', 'patio',\s*'espacios_comunes', 'desayuno', 'otros'\s*\)/i,
+  );
+  assert.match(migration, /storage_path ~ '\^gallery\//i);
+  assert.match(migration, /not is_published or char_length\(btrim\(alt_text\)\) > 0/i);
+  assert.match(migration, /room_id uuid references public\.rooms\(id\) on delete set null/i);
+  assert.match(migration, /alter table public\.media_assets enable row level security/i);
+  assert.match(migration, /create policy media_assets_public_read[\s\S]*for select to anon/i);
+  assert.match(migration, /create policy media_assets_staff_read[\s\S]*media\.read/i);
+  assert.match(migration, /create policy media_assets_staff_insert[\s\S]*media\.manage/i);
+  assert.match(migration, /create policy media_assets_staff_update[\s\S]*media\.manage/i);
+  assert.match(migration, /create policy media_assets_staff_delete[\s\S]*media\.manage/i);
+  assert.match(migration, /grant select \([\s\S]*\) on public\.media_assets to anon/i);
+  assert.match(migration, /grant select, insert, update, delete on public\.media_assets to authenticated/i);
+  assert.match(migration, /permission\.code in \('media\.read', 'media\.manage'\)/i);
+  assert.match(migration, /role\.code = 'owner'/i);
+  assert.match(migration, /'hostel-media'[\s\S]*true[\s\S]*6291456/i);
+  assert.match(migration, /array\['image\/jpeg', 'image\/png', 'image\/webp'\]/i);
+  assert.match(migration, /create policy hostel_media_staff_insert[\s\S]*for insert to authenticated/i);
+  assert.match(migration, /create policy hostel_media_staff_delete[\s\S]*for delete to authenticated/i);
+  assert.doesNotMatch(migration, /create policy hostel_media[^;]*for update/is);
+  assert.doesNotMatch(migration, /create policy hostel_media[^;]*to anon/is);
+  assert.doesNotMatch(migration, /insert\s+into\s+public\.media_assets/i);
+  assert.doesNotMatch(migration, /12582912|12 \* 1024 \* 1024/i);
+
+  const auditFunction = migration.match(
+    /create or replace function private\.capture_media_asset_change\(\)[\s\S]*?\$\$;/i,
+  )?.[0] ?? "";
+  assert.match(auditFunction, /active/);
+  assert.match(auditFunction, /category/);
+  assert.match(auditFunction, /sort_order/);
+  assert.match(auditFunction, /is_published/);
+  assert.doesNotMatch(auditFunction, /original_filename|alt_text|caption/i);
+
+  assert.match(repository, /import "server-only"/);
+  assert.match(repository, /upsert: false/);
+  assert.match(repository, /\.storage\.from\(MEDIA_BUCKET\)\.remove/);
+  assert.doesNotMatch(repository + api + publicGallery, /SUPABASE_(?:SECRET|SERVICE_ROLE)|createSupabaseAdminClient/);
+  assert.match(api, /requireMediaPermissions\(context\.staff, "media\.read", "media\.manage"\)/);
+  assert.match(publicGallery, /select\("id,storage_path,width,height,alt_text,caption,category,sort_order"\)/);
+  assert.match(nextConfig, /pathname: "\/storage\/v1\/object\/public\/hostel-media\/gallery\/\*\*"/);
+  assert.match(validation, /MEDIA_MAX_BYTES = 6 \* 1024 \* 1024/);
+  assert.match(validation, /file\.size > MEDIA_MAX_BYTES/);
+  assert.match(client, /file\.size > MEDIA_MAX_BYTES/);
+  assert.match(documentation, /6 MiB \(6\.291\.456 bytes\)/);
+  assert.doesNotMatch(validation + client + documentation, /12 MiB|12 MB|12582912/);
+});

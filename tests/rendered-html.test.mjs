@@ -58,6 +58,17 @@ test("server-renders every primary public route", async () => {
   }
 });
 
+test("renders the public gallery empty without fictitious images or authentication", async () => {
+  const response = await render("/galeria");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /Las fotografías reales estarán disponibles próximamente/);
+  assert.match(html, /Pedir fotos por WhatsApp/);
+  assert.match(html, /Ver Instagram/);
+  assert.doesNotMatch(html, /<img\b|Habitación Matrimonial|imagen demo|placeholder/i);
+  assert.doesNotMatch(html, /acceso-interno|Iniciar sesión/i);
+});
+
 test("does not publish the removed sample room URLs", async () => {
   const response = await render("/habitaciones/habitacion-matrimonial-demo");
   assert.equal(response.status, 404);
@@ -127,6 +138,18 @@ test("server-renders the complete configuration experience without enabling writ
   assert.match(html, /Usuarios y roles/);
   assert.match(html, /Esta vista es s.lo informativa en modo demo/);
   assert.match(html, /no incluye ba.o privado/i);
+});
+
+test("server-renders the managed gallery empty and disables writes before migration", async () => {
+  process.env.APP_MODE = "demo";
+  const response = await render("/admin/galeria");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /Galería pendiente de habilitación/);
+  assert.match(html, /Todavía no hay fotografías cargadas/);
+  assert.match(html, /Cargar fotografía/);
+  assert.match(html, /fieldset disabled/);
+  assert.doesNotMatch(html, /hostel-media\/gallery\/[0-9a-f-]+\.(?:jpg|png|webp)/i);
 });
 
 test("server-renders the isolated operational dashboard in explicit demo mode", async () => {

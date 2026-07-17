@@ -12,6 +12,7 @@ const navigation = [
   { href: "/admin/reservas", label: "Reservas", code: "RE" },
   { href: "/admin/pagos/pendientes", label: "Pagos y saldos", code: "PA" },
   { href: "/admin/notas", label: "Notas internas", code: "NO" },
+  { href: "/admin/galeria", label: "Galería", code: "GA" },
   { href: "/admin/configuracion", label: "Configuración", code: "CO" },
 ];
 

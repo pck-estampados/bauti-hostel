@@ -1,12 +1,24 @@
-import type { MediaAsset } from "./media-types.ts";
+import type { MediaAsset, MediaUploadTicket } from "./media-types.ts";
 import {
   assertPublishableState,
   buildMediaStoragePath,
+  MediaValidationError,
+  type MediaFinalize,
   type MediaUpdate,
   type MediaUploadFile,
   type MediaUploadMetadata,
   validateMediaFile,
+  validateMediaUploadIntent,
 } from "./media-validation.ts";
+
+type FinalizedMediaFile = {
+  mimeType: string;
+  sizeBytes: number;
+  width: number;
+  height: number;
+  active: boolean;
+  isPublished: boolean;
+};
 
 export type MediaRepository = {
   createStaging: (input: {
@@ -23,16 +35,18 @@ export type MediaRepository = {
     roomId: string | null;
   }) => Promise<MediaAsset>;
   getById: (id: string) => Promise<MediaAsset>;
+  finalizeStaging: (id: string, input: FinalizedMediaFile) => Promise<MediaAsset>;
   update: (id: string, input: MediaUpdate) => Promise<MediaAsset>;
   deleteRow: (id: string) => Promise<void>;
 };
 
 export type MediaStorage = {
-  upload: (
-    path: string,
-    bytes: Uint8Array,
-    options: { contentType: string; upsert: false },
-  ) => Promise<void>;
+  createSignedUpload: (path: string) => Promise<{ token: string }>;
+  download: (path: string) => Promise<{
+    type: string;
+    size: number;
+    arrayBuffer: () => Promise<ArrayBuffer>;
+  }>;
   remove: (path: string) => Promise<void>;
 };
 
@@ -48,6 +62,10 @@ export class MediaOperationError extends Error {
   }
 }
 
+function isPendingVerification(asset: MediaAsset) {
+  return asset.sizeBytes === 1 && asset.width === 1 && asset.height === 1;
+}
+
 export function createMediaService(dependencies: {
   repository: MediaRepository;
   storage: MediaStorage;
@@ -56,17 +74,21 @@ export function createMediaService(dependencies: {
   const randomUUID = dependencies.randomUUID ?? (() => crypto.randomUUID());
 
   return {
-    async upload(file: MediaUploadFile, metadata: MediaUploadMetadata) {
+    async prepareUpload(
+      file: Pick<MediaUploadFile, "name" | "type" | "size">,
+      metadata: MediaUploadMetadata,
+    ): Promise<MediaUploadTicket> {
       assertPublishableState(metadata);
-      const validated = await validateMediaFile(file);
+      const validated = validateMediaUploadIntent(file);
       const storagePath = buildMediaStoragePath(randomUUID(), validated.mimeType);
       const staging = await dependencies.repository.createStaging({
         storagePath,
         originalFilename: validated.originalFilename,
         mimeType: validated.mimeType,
-        sizeBytes: validated.sizeBytes,
-        width: validated.width,
-        height: validated.height,
+        // Sentinel values keep unverified objects inactive and distinguishable.
+        sizeBytes: 1,
+        width: 1,
+        height: 1,
         altText: metadata.altText,
         caption: metadata.caption,
         category: metadata.category,
@@ -75,26 +97,59 @@ export function createMediaService(dependencies: {
       });
 
       try {
-        await dependencies.storage.upload(storagePath, validated.bytes, {
-          contentType: validated.mimeType,
-          upsert: false,
-        });
+        const signedUpload = await dependencies.storage.createSignedUpload(storagePath);
+        return {
+          assetId: staging.id,
+          storagePath,
+          token: signedUpload.token,
+        };
       } catch {
         try {
           await dependencies.repository.deleteRow(staging.id);
         } catch {
           throw new MediaOperationError(
-            "La carga falló y quedó un registro inactivo pendiente de limpieza.",
+            "No se pudo preparar la carga y quedó un registro inactivo pendiente de limpieza.",
             true,
           );
         }
-        throw new MediaOperationError("No se pudo cargar la imagen en Storage.");
+        throw new MediaOperationError("No se pudo preparar la carga segura en Storage.");
+      }
+    },
+
+    async finalizeUpload(id: string, state: MediaFinalize) {
+      const current = await dependencies.repository.getById(id);
+      assertPublishableState({ ...state, altText: current.altText });
+
+      let storedFile: Awaited<ReturnType<MediaStorage["download"]>>;
+      try {
+        storedFile = await dependencies.storage.download(current.storagePath);
+      } catch {
+        throw new MediaOperationError(
+          "El archivo no pudo verificarse y el registro permanece inactivo. Podés reintentar o eliminarlo.",
+          true,
+        );
+      }
+
+      const validated = await validateMediaFile({
+        name: current.originalFilename,
+        type: storedFile.type,
+        size: storedFile.size,
+        arrayBuffer: storedFile.arrayBuffer,
+      });
+      if (validated.mimeType !== current.mimeType) {
+        throw new MediaValidationError(
+          "El tipo MIME almacenado no coincide con la carga autorizada.",
+        );
       }
 
       try {
-        return await dependencies.repository.update(staging.id, {
-          active: metadata.active,
-          isPublished: metadata.isPublished,
+        return await dependencies.repository.finalizeStaging(id, {
+          mimeType: validated.mimeType,
+          sizeBytes: validated.sizeBytes,
+          width: validated.width,
+          height: validated.height,
+          active: state.active,
+          isPublished: state.isPublished,
         });
       } catch {
         throw new MediaOperationError(
@@ -106,6 +161,11 @@ export function createMediaService(dependencies: {
 
     async update(id: string, patch: MediaUpdate) {
       const current = await dependencies.repository.getById(id);
+      if (isPendingVerification(current) && (patch.active || patch.isPublished)) {
+        throw new MediaValidationError(
+          "La imagen debe superar la verificación del archivo antes de activarse.",
+        );
+      }
       assertPublishableState({
         active: patch.active ?? current.active,
         isPublished: patch.isPublished ?? current.isPublished,

@@ -7,8 +7,11 @@ publica filas activas que tengan texto alternativo.
 ## Decisión técnica de carga
 
 El límite operativo es exactamente **6 MiB (6.291.456 bytes) por archivo**. Se
-eligió este tamaño para usar la carga estándar de Supabase y validar el archivo
-completo en el servidor antes de activarlo. El mismo límite se aplica en cuatro
+eligió este tamaño para usar la carga estándar directa de Supabase sin atravesar
+el límite de cuerpo de las Functions de Vercel. La API autenticada crea una ruta
+UUID y un ticket firmado sin overwrite; el navegador carga directamente al
+bucket. Antes de activar la fila, el servidor vuelve a descargar el objeto y
+valida tamaño, MIME, firma binaria y dimensiones. El mismo límite se aplica en cuatro
 capas:
 
 - el bucket de Supabase Storage;

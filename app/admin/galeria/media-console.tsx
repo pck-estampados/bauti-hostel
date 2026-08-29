@@ -8,8 +8,14 @@ import {
   MEDIA_CATEGORY_LABELS,
   type MediaAsset,
   type MediaSnapshot,
+  type MediaUploadTicket,
 } from "@/app/lib/media-types";
-import { buildPublicMediaUrl, MEDIA_MAX_BYTES } from "@/app/lib/media-validation";
+import {
+  buildPublicMediaUrl,
+  MEDIA_BUCKET,
+  validateMediaUploadIntent,
+} from "@/app/lib/media-validation";
+import { createSupabaseBrowserClient } from "@/app/lib/supabase/client";
 
 type StatusFilter = "all" | "published" | "draft" | "inactive";
 
@@ -17,6 +23,7 @@ async function responsePayload(response: Response) {
   const payload = await response.json().catch(() => ({})) as {
     error?: string;
     state?: MediaSnapshot;
+    upload?: MediaUploadTicket;
   };
   if (!response.ok) throw new Error(payload.error ?? "No fue posible completar la operación.");
   return payload;
@@ -226,18 +233,71 @@ export function MediaConsole({
     try {
       const form = new FormData(event.currentTarget);
       const file = form.get("file");
-      if (file instanceof File && file.size > MEDIA_MAX_BYTES) {
-        throw new Error("La imagen debe pesar como máximo 6 MB.");
+      if (!(file instanceof File) || !file.name) {
+        throw new Error("Seleccioná una imagen para cargar.");
       }
-      form.set("active", form.has("active") ? "true" : "false");
-      form.set("isPublished", form.has("isPublished") ? "true" : "false");
-      await responsePayload(await fetch("/api/admin/media", { method: "POST", body: form }));
+      validateMediaUploadIntent(file);
+
+      const active = form.has("active");
+      const isPublished = form.has("isPublished");
+      const prepared = await responsePayload(await fetch("/api/admin/media", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          file: { name: file.name, type: file.type, size: file.size },
+          metadata: {
+            altText: String(form.get("altText") ?? ""),
+            caption: String(form.get("caption") ?? ""),
+            category: String(form.get("category") ?? ""),
+            sortOrder: Number(form.get("sortOrder") ?? 0),
+            roomId: String(form.get("roomId") ?? ""),
+            active,
+            isPublished,
+          },
+        }),
+      }));
+      if (!prepared.upload) throw new Error("No se recibió una autorización de carga válida.");
+
+      const supabase = createSupabaseBrowserClient();
+      const storageResult = await supabase.storage
+        .from(MEDIA_BUCKET)
+        .uploadToSignedUrl(
+          prepared.upload.storagePath,
+          prepared.upload.token,
+          file,
+          { cacheControl: "31536000", contentType: file.type },
+        );
+      if (storageResult.error) {
+        const cleanup = await fetch(`/api/admin/media/${prepared.upload.assetId}`, {
+          method: "DELETE",
+        });
+        if (!cleanup.ok) {
+          throw new Error(
+            "La carga falló y quedó un registro inactivo pendiente de limpieza.",
+          );
+        }
+        throw new Error("No se pudo cargar la imagen en Storage.");
+      }
+
+      await responsePayload(await fetch(`/api/admin/media/${prepared.upload.assetId}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ active, isPublished }),
+      }));
       event.currentTarget.reset();
       if (preview) URL.revokeObjectURL(preview);
       setPreview(null);
       await refresh("La imagen se cargó correctamente.");
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "No fue posible cargar la imagen.");
+      const message = uploadError instanceof Error
+        ? uploadError.message
+        : "No fue posible cargar la imagen.";
+      try {
+        await refresh();
+      } catch {
+        // Preserve the upload error if refreshing the inactive inventory also fails.
+      }
+      setError(message);
       setBusy(false);
     }
   }

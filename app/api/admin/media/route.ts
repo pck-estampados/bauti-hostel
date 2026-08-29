@@ -10,13 +10,11 @@ import {
   requireMediaPermissions,
 } from "@/app/lib/media-api";
 import { createMediaService } from "@/app/lib/media-service-core";
-import {
-  MediaValidationError,
-  mediaUploadMetadataSchema,
-  type MediaUploadFile,
-} from "@/app/lib/media-validation";
+import { mediaUploadRequestSchema } from "@/app/lib/media-validation";
 import { assertSameOrigin } from "@/app/lib/security/same-origin";
 import { createSupabaseServerClient } from "@/app/lib/supabase/server";
+
+export const runtime = "nodejs";
 
 async function requestContext() {
   assertProductionEnvironment();
@@ -32,18 +30,6 @@ async function requestContext() {
       storage: new SupabaseMediaStorage(client),
     }),
   };
-}
-
-function formString(form: FormData, key: string) {
-  const value = form.get(key);
-  return typeof value === "string" ? value : undefined;
-}
-
-function uploadFile(value: FormDataEntryValue | null): MediaUploadFile {
-  if (!(value instanceof File) || !value.name) {
-    throw new MediaValidationError("Seleccioná una imagen para cargar.");
-  }
-  return value;
 }
 
 export async function GET() {
@@ -64,20 +50,9 @@ export async function POST(request: NextRequest) {
     if (!context) return NextResponse.json({ error: "Sesión no válida." }, { status: 401 });
     requireMediaPermissions(context.staff, "media.read", "media.manage");
 
-    const form = await request.formData();
-    const file = uploadFile(form.get("file"));
-    const metadata = mediaUploadMetadataSchema.parse({
-      altText: formString(form, "altText") ?? "",
-      caption: formString(form, "caption") ?? null,
-      category: formString(form, "category"),
-      sortOrder: formString(form, "sortOrder") ?? "0",
-      isPublished: formString(form, "isPublished") ?? "false",
-      active: formString(form, "active") ?? "false",
-      roomId: formString(form, "roomId") ?? null,
-    });
-
-    const asset = await context.service.upload(file, metadata);
-    return NextResponse.json({ asset }, { status: 201 });
+    const payload = mediaUploadRequestSchema.parse(await request.json());
+    const upload = await context.service.prepareUpload(payload.file, payload.metadata);
+    return NextResponse.json({ upload }, { status: 201 });
   } catch (error) {
     return mediaErrorResponse(error);
   }

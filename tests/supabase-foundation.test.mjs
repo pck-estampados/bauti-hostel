@@ -173,10 +173,12 @@ test("exposes only the typed public-site RPC without generic anonymous settings 
 });
 
 test("adds a least-privilege media gallery, public bucket and redacted audit without seeds", async () => {
-  const [migration, repository, api, publicGallery, nextConfig, validation, client, documentation] = await Promise.all([
+  const [migration, repository, api, assetApi, service, publicGallery, nextConfig, validation, client, documentation] = await Promise.all([
     read("supabase/migrations/20260716072901_media_gallery.sql"),
     read("app/admin/data/supabase-media-repository.ts"),
     read("app/api/admin/media/route.ts"),
+    read("app/api/admin/media/[id]/route.ts"),
+    read("app/lib/media-service-core.ts"),
     read("app/lib/public-gallery.ts"),
     read("next.config.ts"),
     read("app/lib/media-validation.ts"),
@@ -224,14 +226,21 @@ test("adds a least-privilege media gallery, public bucket and redacted audit wit
 
   assert.match(repository, /import "server-only"/);
   assert.match(repository, /upsert: false/);
+  assert.match(repository, /createSignedUploadUrl/);
+  assert.match(repository, /\.download\(path\)/);
   assert.match(repository, /\.storage\.from\(MEDIA_BUCKET\)\.remove/);
-  assert.doesNotMatch(repository + api + publicGallery, /SUPABASE_(?:SECRET|SERVICE_ROLE)|createSupabaseAdminClient/);
+  assert.doesNotMatch(repository + api + assetApi + publicGallery, /SUPABASE_(?:SECRET|SERVICE_ROLE)|createSupabaseAdminClient/);
   assert.match(api, /requireMediaPermissions\(context\.staff, "media\.read", "media\.manage"\)/);
+  assert.match(api, /mediaUploadRequestSchema\.parse\(await request\.json\(\)\)/);
+  assert.doesNotMatch(api, /request\.formData\(\)/);
+  assert.match(assetApi, /mediaFinalizeSchema\.parse\(await request\.json\(\)\)/);
+  assert.match(service, /validateMediaFile/);
   assert.match(publicGallery, /select\("id,storage_path,width,height,alt_text,caption,category,sort_order"\)/);
   assert.match(nextConfig, /pathname: "\/storage\/v1\/object\/public\/hostel-media\/gallery\/\*\*"/);
   assert.match(validation, /MEDIA_MAX_BYTES = 6 \* 1024 \* 1024/);
   assert.match(validation, /file\.size > MEDIA_MAX_BYTES/);
-  assert.match(client, /file\.size > MEDIA_MAX_BYTES/);
+  assert.match(client, /validateMediaUploadIntent\(file\)/);
+  assert.match(client, /uploadToSignedUrl/);
   assert.match(documentation, /6 MiB \(6\.291\.456 bytes\)/);
   assert.doesNotMatch(validation + client + documentation, /12 MiB|12 MB|12582912/);
 });

@@ -5,7 +5,7 @@ pública aprobada y el panel privado de administración.
 
 ## Requisitos
 
-- Node.js 22.13 o posterior.
+- Node.js 22 LTS (declarado en `.nvmrc` y `package.json`).
 - npm.
 
 ## Desarrollo local
@@ -15,14 +15,14 @@ npm install
 npm run dev
 ```
 
-La aplicación queda disponible en `http://localhost:3000`. El script de inicio
-es multiplataforma y configura Wrangler desde Node.
+La aplicación queda disponible en `http://localhost:3000` y utiliza el runtime
+nativo de Next.js.
 
 ## Comandos
 
 ```bash
 npm run dev       # servidor local
-npm run build     # build de producción con vinext
+npm run build     # build de producción nativo de Next.js
 npm test          # build y pruebas de renderizado/seguridad estructural
 npm run lint      # análisis estático
 ```
@@ -38,11 +38,10 @@ npm run lint      # análisis estático
 - Migraciones versionadas para el modelo operacional; no contienen habitaciones,
   camas, huéspedes, reservas ni pagos ficticios.
 - Adaptadores separados para demo y Supabase bajo un contrato común.
-- La base D1/Drizzle del starter permanece sin enlazar y no es fuente de verdad.
+- Supabase PostgreSQL, Auth y Storage son la única fuente de verdad persistente.
 
-La integración Supabase está preparada y pendiente de credenciales, aplicación
-de migraciones y verificación contra el proyecto real. Esta fase incompleta no
-se desplegó.
+Las credenciales públicas y el modo de aplicación se configuran únicamente por
+variables de entorno; no se versionan secretos ni archivos `.env.local`.
 
 Los cambios dentro de `APP_MODE=demo` se descartan al recargar. No debe usarse
 para datos reales. Consultar `docs/supabase-setup.md` antes de activar

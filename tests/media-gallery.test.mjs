@@ -79,6 +79,7 @@ function asset(overrides = {}) {
 function memoryAdapters(options = {}) {
   const events = [];
   let current = asset();
+  const storedFile = options.storedFile ?? uploadFile();
   const repository = {
     async createStaging(input) {
       events.push("row:create-inactive");
@@ -87,6 +88,12 @@ function memoryAdapters(options = {}) {
     },
     async getById() {
       events.push("row:get");
+      return current;
+    },
+    async finalizeStaging(_id, input) {
+      events.push(`row:finalize:${input.active}:${input.isPublished}`);
+      if (options.failFinalize) throw new Error("finalize failed");
+      current = { ...current, ...input };
       return current;
     },
     async update(_id, patch) {
@@ -101,9 +108,15 @@ function memoryAdapters(options = {}) {
     },
   };
   const storage = {
-    async upload(path, _bytes, uploadOptions) {
-      events.push(`storage:upload:${path}:${uploadOptions.upsert}`);
-      if (options.failUpload) throw new Error("upload failed");
+    async createSignedUpload(path) {
+      events.push(`storage:sign:${path}:false`);
+      if (options.failSign) throw new Error("sign failed");
+      return { token: "signed-upload-token" };
+    },
+    async download(path) {
+      events.push(`storage:download:${path}`);
+      if (options.failDownload) throw new Error("download failed");
+      return storedFile;
     },
     async remove(path) {
       events.push(`storage:remove:${path}`);
@@ -191,66 +204,87 @@ test("keeps exactly the eight approved internal categories and visible labels", 
   assert.equal(mediaUploadMetadataSchema.safeParse({ ...metadata, category: "otra_categoria" }).success, false);
 });
 
-test("uploads inactive first, never upserts and activates only after Storage succeeds", async () => {
+test("prepares an inactive row and a non-overwriting signed Storage upload", async () => {
   const adapters = memoryAdapters();
   const service = createMediaService({
     repository: adapters.repository,
     storage: adapters.storage,
     randomUUID: () => UUID,
   });
-  const result = await service.upload(uploadFile(), metadata);
+  const result = await service.prepareUpload(uploadFile(), metadata);
 
-  assert.equal(result.active, true);
+  assert.equal(result.assetId, UUID);
+  assert.equal(result.storagePath, `gallery/${UUID}.png`);
+  assert.equal(adapters.current().active, false);
+  assert.equal(adapters.current().sizeBytes, 1);
   assert.deepEqual(adapters.events, [
     "row:create-inactive",
-    `storage:upload:gallery/${UUID}.png:false`,
-    "row:update:true:false",
+    `storage:sign:gallery/${UUID}.png:false`,
   ]);
 });
 
-test("compensates a failed upload and reports an unrecoverable cleanup as partial", async () => {
-  const recoverable = memoryAdapters({ failUpload: true });
+test("compensates a failed signed-upload preparation and reports cleanup failures", async () => {
+  const recoverable = memoryAdapters({ failSign: true });
   const service = createMediaService({
     repository: recoverable.repository,
     storage: recoverable.storage,
     randomUUID: () => UUID,
   });
-  await assert.rejects(service.upload(uploadFile(), metadata), (error) => {
+  await assert.rejects(service.prepareUpload(uploadFile(), metadata), (error) => {
     assert.equal(error instanceof MediaOperationError, true);
     assert.equal(error.partial, false);
     return true;
   });
   assert.deepEqual(recoverable.events.slice(-2), [
-    `storage:upload:gallery/${UUID}.png:false`,
+    `storage:sign:gallery/${UUID}.png:false`,
     "row:delete",
   ]);
 
-  const partial = memoryAdapters({ failUpload: true, failDelete: true });
+  const partial = memoryAdapters({ failSign: true, failDelete: true });
   const partialService = createMediaService({
     repository: partial.repository,
     storage: partial.storage,
     randomUUID: () => UUID,
   });
-  await assert.rejects(partialService.upload(uploadFile(), metadata), (error) => {
+  await assert.rejects(partialService.prepareUpload(uploadFile(), metadata), (error) => {
     assert.equal(error.partial, true);
     assert.equal(error.code, "MEDIA_PARTIAL_FAILURE");
     return true;
   });
 });
 
-test("leaves uploaded files visible for retry when final activation fails", async () => {
-  const adapters = memoryAdapters({ failUpdate: true });
+test("validates the stored bytes before activation and leaves finalization failures retryable", async () => {
+  const adapters = memoryAdapters();
   const service = createMediaService({
     repository: adapters.repository,
     storage: adapters.storage,
     randomUUID: () => UUID,
   });
-  await assert.rejects(service.upload(uploadFile(), metadata), (error) => {
+  await service.prepareUpload(uploadFile(), metadata);
+  const result = await service.finalizeUpload(UUID, { active: true, isPublished: false });
+  assert.equal(result.active, true);
+  assert.equal(result.width, 640);
+  assert.deepEqual(adapters.events, [
+    "row:create-inactive",
+    `storage:sign:gallery/${UUID}.png:false`,
+    "row:get",
+    `storage:download:gallery/${UUID}.png`,
+    "row:finalize:true:false",
+  ]);
+
+  const partial = memoryAdapters({ failFinalize: true });
+  const partialService = createMediaService({
+    repository: partial.repository,
+    storage: partial.storage,
+    randomUUID: () => UUID,
+  });
+  await partialService.prepareUpload(uploadFile(), metadata);
+  await assert.rejects(partialService.finalizeUpload(UUID, { active: true, isPublished: false }), (error) => {
     assert.equal(error.partial, true);
     assert.match(error.message, /almacenada e inactiva/i);
     return true;
   });
-  assert.equal(adapters.current().active, false);
+  assert.equal(partial.current().active, false);
 });
 
 test("depublishes before deleting through Storage API and keeps partial failures retryable", async () => {

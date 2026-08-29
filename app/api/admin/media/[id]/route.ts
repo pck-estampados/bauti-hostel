@@ -8,9 +8,11 @@ import { getStaffSession } from "@/app/lib/auth/staff-session";
 import { assertProductionEnvironment } from "@/app/lib/config/env";
 import { mediaErrorResponse, requireMediaPermissions } from "@/app/lib/media-api";
 import { createMediaService } from "@/app/lib/media-service-core";
-import { mediaUpdateSchema } from "@/app/lib/media-validation";
+import { mediaFinalizeSchema, mediaUpdateSchema } from "@/app/lib/media-validation";
 import { assertSameOrigin } from "@/app/lib/security/same-origin";
 import { createSupabaseServerClient } from "@/app/lib/supabase/server";
+
+export const runtime = "nodejs";
 
 const idSchema = z.uuid();
 
@@ -38,6 +40,23 @@ export async function PATCH(
     const id = idSchema.parse((await params).id);
     const patch = mediaUpdateSchema.parse(await request.json());
     return NextResponse.json({ asset: await context.service.update(id, patch) });
+  } catch (error) {
+    return mediaErrorResponse(error);
+  }
+}
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    await assertSameOrigin();
+    const context = await requestContext();
+    if (!context) return NextResponse.json({ error: "Sesión no válida." }, { status: 401 });
+    requireMediaPermissions(context.staff, "media.read", "media.manage");
+    const id = idSchema.parse((await params).id);
+    const state = mediaFinalizeSchema.parse(await request.json());
+    return NextResponse.json({ asset: await context.service.finalizeUpload(id, state) });
   } catch (error) {
     return mediaErrorResponse(error);
   }

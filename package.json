@@ -3,14 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=22.13.0"
+    "node": "22.x"
   },
   "scripts": {
-    "dev": "node scripts/run-vinext.mjs dev",
-    "build": "node scripts/run-vinext.mjs build",
-    "start": "node scripts/run-vinext.mjs start",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "test": "npm run build && node --experimental-strip-types --test tests/media-gallery.test.mjs tests/rendered-html.test.mjs tests/supabase-foundation.test.mjs",
-    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "lint": "eslint . --ignore-pattern .wrangler --ignore-pattern .vinext --ignore-pattern .npm-cache --ignore-pattern dist --ignore-pattern .next --ignore-pattern out --ignore-pattern outputs --ignore-pattern work",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -23,21 +23,14 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.45.0",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "@vitejs/plugin-react": "6.0.2",
-    "@vitejs/plugin-rsc": "0.5.26",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.10",
-    "react-server-dom-webpack": "19.2.6",
     "tailwindcss": "4.2.1",
-    "typescript": "5.9.3",
-    "vinext": "0.0.50",
-    "vite": "8.1.4",
-    "wrangler": "4.111.0"
+    "typescript": "5.9.3"
   },
   "overrides": {
     "postcss": "8.5.14"

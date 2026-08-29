@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { Suspense, useState, type FormEvent } from "react";
 import { createSupabaseBrowserClient } from "@/app/lib/supabase/client";
 
-export default function StaffLoginPage() {
+function StaffLoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -55,5 +55,13 @@ export default function StaffLoginPage() {
         <small>No existe registro público de empleados. Los accesos se habilitan internamente.</small>
       </section>
     </main>
+  );
+}
+
+export default function StaffLoginPage() {
+  return (
+    <Suspense fallback={<main className="staff-auth" aria-busy="true" />}>
+      <StaffLoginForm />
+    </Suspense>
   );
 }

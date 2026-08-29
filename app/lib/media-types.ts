@@ -54,6 +54,12 @@ export type MediaSnapshot = {
   rooms: MediaRoomOption[];
 };
 
+export type MediaUploadTicket = {
+  assetId: string;
+  storagePath: string;
+  token: string;
+};
+
 export type PublicGalleryAsset = Pick<
   MediaAsset,
   | "id"

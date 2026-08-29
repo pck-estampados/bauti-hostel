@@ -65,8 +65,8 @@ futuros. Solo métricas accionables y con trazabilidad.
 
 ## Riesgos y decisiones pendientes
 
-- Definir Cloudflare o Vercel antes de producción.
-- Obtener proyecto Supabase y credenciales públicas/servidor.
+- Completar el despliegue controlado en Vercel y configurar sus variables públicas.
+- Verificar el entorno productivo después del primer despliegue.
 - Confirmar inventario, capacidades, camas y tarifas reales.
 - Cargar fotografías y logo definitivos.
 - Aprobar cancelación, pagos, privacidad y términos.

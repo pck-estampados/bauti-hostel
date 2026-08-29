@@ -182,6 +182,27 @@ export class SupabaseMediaRepository implements MediaRepository {
     return mediaAsset(result.data as unknown as MediaRow);
   }
 
+  async finalizeStaging(
+    id: string,
+    input: Parameters<MediaRepository["finalizeStaging"]>[1],
+  ) {
+    const result = await this.client
+      .from("media_assets")
+      .update({
+        mime_type: input.mimeType,
+        size_bytes: input.sizeBytes,
+        width: input.width,
+        height: input.height,
+        active: input.active,
+        is_published: input.isPublished,
+      })
+      .eq("id", id)
+      .select(MEDIA_SELECTION)
+      .single();
+    throwDatabaseError(result.error, "No fue posible finalizar la imagen.");
+    return mediaAsset(result.data as unknown as MediaRow);
+  }
+
   async update(id: string, input: MediaUpdate) {
     const result = await this.client
       .from("media_assets")
@@ -202,17 +223,24 @@ export class SupabaseMediaRepository implements MediaRepository {
 export class SupabaseMediaStorage implements MediaStorage {
   constructor(private readonly client: SupabaseClient) {}
 
-  async upload(
-    path: string,
-    bytes: Uint8Array,
-    options: { contentType: string; upsert: false },
-  ) {
-    const { error } = await this.client.storage.from(MEDIA_BUCKET).upload(path, bytes, {
-      contentType: options.contentType,
-      cacheControl: "31536000",
-      upsert: false,
-    });
-    if (error) throw new Error("No fue posible cargar el archivo.");
+  async createSignedUpload(path: string) {
+    const { data, error } = await this.client.storage
+      .from(MEDIA_BUCKET)
+      .createSignedUploadUrl(path, { upsert: false });
+    if (error || !data || data.path !== path) {
+      throw new Error("No fue posible autorizar la carga del archivo.");
+    }
+    return { token: data.token };
+  }
+
+  async download(path: string) {
+    const { data, error } = await this.client.storage.from(MEDIA_BUCKET).download(path);
+    if (error || !data) throw new Error("No fue posible verificar el archivo.");
+    return {
+      type: data.type,
+      size: data.size,
+      arrayBuffer: () => data.arrayBuffer(),
+    };
   }
 
   async remove(path: string) {

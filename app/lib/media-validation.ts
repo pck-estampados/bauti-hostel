@@ -18,7 +18,7 @@ const MIME_TO_EXTENSION = {
   "image/webp": "webp",
 } as const;
 
-type AllowedMime = keyof typeof MIME_TO_EXTENSION;
+export type AllowedMime = keyof typeof MIME_TO_EXTENSION;
 
 const EXTENSION_TO_MIME: Record<string, AllowedMime> = {
   jpg: "image/jpeg",
@@ -78,6 +78,31 @@ export const mediaUploadMetadataSchema = z
     }
   });
 
+export const mediaUploadRequestSchema = z
+  .object({
+    file: z.object({
+      name: z.string().trim().min(1).max(255),
+      type: z.string().trim().min(1).max(100),
+      size: z.number().int().min(1).max(
+        MEDIA_MAX_BYTES,
+        "La imagen debe pesar como máximo 6 MB.",
+      ),
+    }).strict(),
+    metadata: mediaUploadMetadataSchema,
+  })
+  .strict();
+
+export const mediaFinalizeSchema = z
+  .object({
+    active: z.boolean(),
+    isPublished: z.boolean(),
+  })
+  .strict()
+  .refine(
+    (value) => !value.isPublished || value.active,
+    { path: ["isPublished"], message: "Una imagen publicada debe estar activa." },
+  );
+
 export const mediaUpdateSchema = z
   .object({
     altText: editableFields.altText.optional(),
@@ -93,6 +118,7 @@ export const mediaUpdateSchema = z
 
 export type MediaUploadMetadata = z.infer<typeof mediaUploadMetadataSchema>;
 export type MediaUpdate = z.infer<typeof mediaUpdateSchema>;
+export type MediaFinalize = z.infer<typeof mediaFinalizeSchema>;
 
 export type MediaUploadFile = {
   name: string;
@@ -109,6 +135,11 @@ export type ValidatedMediaFile = {
   width: number;
   height: number;
 };
+
+export type ValidatedMediaUploadIntent = Omit<
+  ValidatedMediaFile,
+  "bytes" | "width" | "height"
+>;
 
 export class MediaValidationError extends Error {
   readonly code = "MEDIA_VALIDATION_FAILED";
@@ -232,7 +263,9 @@ function safeOriginalFilename(filename: string) {
   return name;
 }
 
-export async function validateMediaFile(file: MediaUploadFile): Promise<ValidatedMediaFile> {
+export function validateMediaUploadIntent(
+  file: Pick<MediaUploadFile, "name" | "type" | "size">,
+): ValidatedMediaUploadIntent {
   if (!Number.isInteger(file.size) || file.size < 1 || file.size > MEDIA_MAX_BYTES) {
     throw new MediaValidationError("La imagen debe pesar como máximo 6 MB.");
   }
@@ -248,13 +281,23 @@ export async function validateMediaFile(file: MediaUploadFile): Promise<Validate
     throw new MediaValidationError("La extensión del archivo no coincide con su tipo MIME.");
   }
 
+  return {
+    originalFilename,
+    mimeType: declaredMime,
+    sizeBytes: file.size,
+  };
+}
+
+export async function validateMediaFile(file: MediaUploadFile): Promise<ValidatedMediaFile> {
+  const intent = validateMediaUploadIntent(file);
+
   const bytes = new Uint8Array(await file.arrayBuffer());
   if (bytes.byteLength !== file.size) {
     throw new MediaValidationError("El tamaño recibido no coincide con el archivo declarado.");
   }
 
   const inspected = inspectImage(bytes);
-  if (inspected.mimeType !== declaredMime) {
+  if (inspected.mimeType !== intent.mimeType) {
     throw new MediaValidationError("La firma binaria no coincide con el tipo MIME declarado.");
   }
   if (
@@ -269,8 +312,8 @@ export async function validateMediaFile(file: MediaUploadFile): Promise<Validate
 
   return {
     bytes,
-    originalFilename,
-    mimeType: declaredMime,
+    originalFilename: intent.originalFilename,
+    mimeType: intent.mimeType,
     sizeBytes: file.size,
     width: inspected.width,
     height: inspected.height,

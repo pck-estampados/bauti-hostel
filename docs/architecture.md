@@ -1,20 +1,20 @@
-# Arquitectura propuesta
+# Arquitectura
 
 ## Auditoría del punto de partida
 
-El repositorio recibido era el starter `vinext` sin funcionalidades del hostel:
+El repositorio partió de un starter `vinext` sin funcionalidades del hostel:
 
-- Next.js 16 App Router y React 19 ejecutados por vinext/Vite.
-- Worker de Cloudflare para servir la aplicación y optimizar imágenes.
+- Next.js 16 App Router y React 19 ejecutados inicialmente por Vinext/Vite.
+- Un Worker de Cloudflare servía la aplicación y optimizaba imágenes.
 - Tailwind CSS disponible, más una capa visual propia en `app/globals.css`.
 - Drizzle configurado para SQLite/D1, pero sin tablas ni migraciones.
-- D1 y R2 desactivados en `.openai/hosting.json`.
+- D1 y R2 estaban desactivados.
 - Sin Supabase, autenticación, reservas, administración ni datos de negocio.
 - Una única página placeholder y tests que exigían conservar ese placeholder.
 
-El proceso detenido registrado en `.devserver.stderr.log` falló con `EACCES` al
-intentar obtener `Request.cf` dentro del sandbox. No era un error de React. La
-ejecución manual posterior estaba activa y respondía correctamente.
+La aplicación actual ejecuta Next.js de forma nativa y queda preparada para el
+runtime Node.js de Vercel. Los componentes exclusivos de Vinext, Vite y
+Cloudflare se retiraron sin cambiar la capa de negocio ni Supabase.
 
 ## Decisión de arquitectura
 
@@ -33,9 +33,7 @@ Para la capa de negocio se recomienda:
 6. Route Handlers/Server Actions como límite de aplicación.
 7. Servicios de dominio puros para disponibilidad, precios y estados.
 
-No se recomienda mantener D1/SQLite en paralelo. El starter todavía contiene
-los adaptadores vacíos porque no afectan la Fase 1; deben retirarse cuando se
-incorpore el cliente Supabase, evitando dos fuentes de verdad.
+No se mantiene D1/SQLite en paralelo: Supabase es la única fuente de verdad.
 
 Drizzle podría conectarse a PostgreSQL, pero en este proyecto añadiría una capa
 adicional sobre Supabase Auth, Storage, RLS y RPC sin una ventaja inmediata. La
@@ -43,12 +41,12 @@ propuesta es usar tipos generados por Supabase y SQL explícito para constraints
 políticas y transacciones críticas. Esta decisión puede revisarse si el equipo
 necesita un ORM para consultas complejas del backend.
 
-## Límite de despliegue pendiente
+## Runtime y despliegue
 
-El starter actual produce un Cloudflare Worker. El brief original menciona
-Vercel. Todo el código de interfaz usa APIs compatibles con Next.js, por lo que
-la decisión de hosting puede tomarse antes de producción sin rehacer la Fase 1.
-No se deben sostener ambos runtimes en producción. Supabase funciona con ambos.
+El proyecto produce un build estándar en `.next/` y usa el runtime Node.js de
+Next.js para Server Components, Route Handlers, cookies y optimización de
+imágenes. Vercel es el destino de hosting previsto; la publicación y sus
+variables se configuran en una tarea separada.
 
 ## Capas
 

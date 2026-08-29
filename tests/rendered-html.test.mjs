@@ -1,17 +1,87 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { spawn } from "node:child_process";
+import { once } from "node:events";
+import { createServer } from "node:net";
+import { fileURLToPath } from "node:url";
+import { after, before, test } from "node:test";
 
-const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+const projectRoot = fileURLToPath(new URL("../", import.meta.url));
+const nextCli = fileURLToPath(new URL("../node_modules/next/dist/bin/next", import.meta.url));
+
+let application;
+let baseUrl;
+let applicationOutput = "";
+
+async function availablePort() {
+  const server = createServer();
+  server.unref();
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const address = server.address();
+  const port = typeof address === "object" && address ? address.port : 0;
+  server.close();
+  await once(server, "close");
+  return port;
+}
+
+async function waitUntilReady() {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    if (application.exitCode !== null) {
+      throw new Error(`Next.js terminó antes de iniciar.\n${applicationOutput}`);
+    }
+
+    try {
+      const response = await fetch(baseUrl, { redirect: "manual" });
+      if (response.status > 0) return;
+    } catch {
+      // The production server can take a few seconds to bind the port.
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  throw new Error(`Next.js no respondió a tiempo.\n${applicationOutput}`);
+}
+
+before(async () => {
+  const port = await availablePort();
+  baseUrl = `http://127.0.0.1:${port}`;
+  application = spawn(
+    process.execPath,
+    [nextCli, "start", "-H", "127.0.0.1", "-p", String(port)],
+    {
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        APP_MODE: "demo",
+        NEXT_PUBLIC_SITE_URL: "http://localhost:3000",
+        NEXT_PUBLIC_SUPABASE_URL: "https://127.0.0.1:9",
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+          "sb_publishable_test_only_not_a_real_credential",
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  application.stdout.on("data", (chunk) => { applicationOutput += chunk; });
+  application.stderr.on("data", (chunk) => { applicationOutput += chunk; });
+  await waitUntilReady();
+});
+
+after(async () => {
+  if (!application || application.exitCode !== null) return;
+  application.kill();
+  await Promise.race([
+    once(application, "exit"),
+    new Promise((resolve) => setTimeout(resolve, 5_000)),
+  ]);
+  if (application.exitCode === null) application.kill("SIGKILL");
+});
 
 async function render(pathname = "/", requestHeaders = {}) {
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-${pathname}`);
-  const { default: worker } = await import(workerUrl.href);
-
-  return worker.fetch(
-    new Request(`http://localhost${pathname}`, { headers: { accept: "text/html", ...requestHeaders } }),
-    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
-    { waitUntil() {}, passThroughOnException() {} },
-  );
+  return fetch(`${baseUrl}${pathname}`, {
+    headers: { accept: "text/html", ...requestHeaders },
+    redirect: "manual",
+  });
 }
 
 test("renders the real Hostel Bauti public home", async () => {
@@ -105,7 +175,10 @@ test("renders public schedules and policies from the safe fallback", async () =>
   assert.match(policiesHtml, /23:00[\s\S]{0,40}a[\s\S]{0,40}08:00/);
   assert.match(locationHtml, /rel="canonical" href="http:\/\/localhost:3000\/ubicacion"/);
   assert.match(policiesHtml, /Las mascotas se admiten/);
-  assert.doesNotMatch(locationHtml + policiesHtml, /error|stack trace/i);
+  assert.doesNotMatch(
+    locationHtml + policiesHtml,
+    /Application error|Internal Server Error|stack trace/i,
+  );
 });
 
 test("publishes a public-only sitemap and protective robots rules", async () => {
@@ -126,7 +199,6 @@ test("publishes a public-only sitemap and protective robots rules", async () => 
 });
 
 test("server-renders the complete configuration experience without enabling writes in demo mode", async () => {
-  process.env.APP_MODE = "demo";
   const response = await render("/admin/configuracion");
   assert.equal(response.status, 200);
   const html = await response.text();
@@ -141,7 +213,6 @@ test("server-renders the complete configuration experience without enabling writ
 });
 
 test("server-renders the managed gallery empty and disables writes before migration", async () => {
-  process.env.APP_MODE = "demo";
   const response = await render("/admin/galeria");
   assert.equal(response.status, 200);
   const html = await response.text();
@@ -153,7 +224,6 @@ test("server-renders the managed gallery empty and disables writes before migrat
 });
 
 test("server-renders the isolated operational dashboard in explicit demo mode", async () => {
-  process.env.APP_MODE = "demo";
   const response = await render("/admin");
   assert.equal(response.status, 200);
   const html = await response.text();

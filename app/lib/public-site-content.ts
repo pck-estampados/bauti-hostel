@@ -3,11 +3,11 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import { cache } from "react";
 import { z } from "zod";
+import { brand } from "@/app/lib/brand";
 import { getPublicSupabaseConfig } from "@/app/lib/config/env";
 import type { PublicSiteContent } from "@/app/lib/public-site-types";
 
 const publicSiteRowSchema = z.object({
-  hostel_name: z.string().nullable(),
   phone: z.string().nullable(),
   whatsapp: z.string().nullable(),
   address: z.string().nullable(),
@@ -27,7 +27,7 @@ const publicSiteRowSchema = z.object({
 });
 
 export const PUBLIC_SITE_FALLBACK: PublicSiteContent = {
-  name: "Hostel Bauti",
+  name: brand.publicName,
   phone: "+54 9 11 2806-4272",
   whatsapp: "+54 9 11 2806-4272",
   address: "Uruguayana 235",
@@ -61,7 +61,7 @@ function fromRpcRow(
   row: z.infer<typeof publicSiteRowSchema>,
 ): PublicSiteContent {
   return {
-    name: confirmed(row.hostel_name, PUBLIC_SITE_FALLBACK.name),
+    name: brand.publicName,
     phone: confirmed(row.phone, PUBLIC_SITE_FALLBACK.phone),
     whatsapp: confirmed(row.whatsapp, PUBLIC_SITE_FALLBACK.whatsapp),
     address: confirmed(row.address, PUBLIC_SITE_FALLBACK.address),

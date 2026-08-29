@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { PageHero } from "@/app/components/page-hero";
+import { brand } from "@/app/lib/brand";
 import { getPublicSiteContent } from "@/app/lib/public-site-content";
 import {
   generalWhatsappMessage,
-  socialConfig,
   whatsappHref,
 } from "@/app/lib/site";
 
@@ -31,8 +31,8 @@ export default async function ContactPage() {
           <a className="contact-card contact-card--primary" href={contactHref} target="_blank" rel="noreferrer">
             <span>WhatsApp</span><strong>{content.whatsapp}</strong><p>Reservas y consultas</p><i aria-hidden="true">→</i>
           </a>
-          <a className="contact-card" href={socialConfig.instagramUrl} target="_blank" rel="noreferrer">
-            <span>Instagram</span><strong>{socialConfig.instagramHandle}</strong><p>Novedades y contacto</p><i aria-hidden="true">→</i>
+          <a className="contact-card" href={brand.instagram.url} target="_blank" rel="noreferrer">
+            <span>Instagram</span><strong>{brand.instagram.handle}</strong><p>Novedades y contacto</p><i aria-hidden="true">→</i>
           </a>
           <div className="contact-card">
             <span>Dirección</span><strong>{content.address}</strong><p>{content.city}, Provincia de {content.province}</p>

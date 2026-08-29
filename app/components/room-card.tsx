@@ -1,4 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
+import { brand } from "@/app/lib/brand";
 import type { PublicRoom } from "@/app/lib/site";
 
 export function RoomCard({ room, index }: { room: PublicRoom; index: number }) {
@@ -6,7 +8,9 @@ export function RoomCard({ room, index }: { room: PublicRoom; index: number }) {
     <article className="room-card">
       <div className={`room-card__visual room-card__visual--${room.tone}`}>
         <span className="room-card__number">0{index + 1}</span>
-        <span className="room-card__monogram" aria-hidden="true">HB</span>
+        <span className="room-card__monogram" aria-hidden="true">
+          <Image src={brand.assets.isotipoCream} alt="" width={1000} height={1000} />
+        </span>
       </div>
       <div className="room-card__body">
         <p className="eyebrow">Habitación privada</p>

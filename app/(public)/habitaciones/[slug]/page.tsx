@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { brand } from "@/app/lib/brand";
 import { getPublicSiteContent } from "@/app/lib/public-site-content";
 import { publishedRooms, whatsappHref } from "@/app/lib/site";
 
@@ -46,7 +48,7 @@ export default async function RoomDetailPage({ params }: RoomDetailProps) {
             </div>
           </div>
           <div className={`room-detail-visual room-detail-visual--${room.tone}`} aria-hidden="true">
-            <span>HB</span><strong>{room.name}</strong>
+            <span><Image src={brand.assets.isotipoCream} alt="" width={1000} height={1000} /></span><strong>{room.name}</strong>
           </div>
         </div>
       </section>

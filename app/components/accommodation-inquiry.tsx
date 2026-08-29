@@ -1,4 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
+import { brand } from "@/app/lib/brand";
 import { formatArs } from "@/app/lib/site";
 import type { PublicSiteContent } from "@/app/lib/public-site-types";
 
@@ -12,7 +14,9 @@ export function AccommodationInquiry({
   return (
     <article className={`accommodation-inquiry${compact ? " accommodation-inquiry--compact" : ""}`}>
       <div className="accommodation-inquiry__visual" aria-hidden="true">
-        <span>HB</span>
+        <span>
+          <Image src={brand.assets.isotipoCream} alt="" width={1000} height={1000} />
+        </span>
         <strong>Habitaciones privadas</strong>
         <small>{content.name} · {content.city}</small>
       </div>

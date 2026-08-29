@@ -1,39 +1,51 @@
+import Image from "next/image";
 import Link from "next/link";
-import { navigation } from "@/app/lib/site";
-import type { PublicSiteContent } from "@/app/lib/public-site-types";
+import { brand, primaryNavigation } from "@/app/lib/brand";
 
-export function SiteHeader({ content }: { content: PublicSiteContent }) {
+export function SiteHeader() {
   return (
     <header className="site-header">
       <div className="shell site-header__inner">
-        <Link className="wordmark" href="/" aria-label={`${content.name}, inicio`}>
-          <span className="wordmark__seal" aria-hidden="true">HB</span>
-          <span>
-            <strong>{content.name}</strong>
-            <small>{content.city} · {content.province}</small>
+        <Link className="brand-lockup" href="/" aria-label={`${brand.publicName}, inicio`}>
+          <span className="brand-lockup__isotipo-frame" aria-hidden="true">
+            <Image
+              className="brand-lockup__isotipo"
+              src={brand.assets.isotipo}
+              alt=""
+              width={1000}
+              height={1000}
+              priority
+            />
+          </span>
+          <span className="brand-lockup__copy">
+            <strong>{brand.publicName}</strong>
+            <small>{brand.descriptor}</small>
           </span>
         </Link>
 
         <nav className="desktop-nav" aria-label="Navegación principal">
-          {navigation.slice(0, 6).map((item) => (
+          {primaryNavigation.map((item) => (
             <Link key={item.href} href={item.href}>{item.label}</Link>
           ))}
         </nav>
 
         <Link className="button button--small button--dark header-booking" href="/reservar">
-          Consultar estadía
+          Reservar
         </Link>
 
         <details className="mobile-menu">
-          <summary aria-label="Abrir navegación">
-            <span aria-hidden="true" />
-            <span aria-hidden="true" />
+          <summary>
+            <span className="mobile-menu__lines" aria-hidden="true">
+              <i />
+              <i />
+            </span>
+            <span className="sr-only">Abrir navegación principal</span>
           </summary>
           <nav aria-label="Navegación móvil">
-            {navigation.map((item) => (
+            {primaryNavigation.map((item) => (
               <Link key={item.href} href={item.href}>{item.label}</Link>
             ))}
-            <Link className="button button--primary" href="/reservar">Consultar estadía</Link>
+            <Link className="button button--primary" href="/reservar">Reservar</Link>
           </nav>
         </details>
       </div>

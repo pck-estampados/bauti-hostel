@@ -1,9 +1,9 @@
+import Image from "next/image";
 import Link from "next/link";
+import { brand, footerNavigation } from "@/app/lib/brand";
 import {
   generalWhatsappMessage,
-  navigation,
   publicFullAddress,
-  socialConfig,
   whatsappHref,
 } from "@/app/lib/site";
 import type { PublicSiteContent } from "@/app/lib/public-site-types";
@@ -17,20 +17,23 @@ export function SiteFooter({ content }: { content: PublicSiteContent }) {
     <footer className="site-footer">
       <div className="shell site-footer__grid">
         <div className="site-footer__brand">
-          <Link className="wordmark wordmark--footer" href="/">
-            <span className="wordmark__seal" aria-hidden="true">HB</span>
-            <span><strong>{content.name}</strong><small>Alojamiento en {content.city}</small></span>
+          <Link className="site-footer__logo" href="/" aria-label={`${brand.publicName}, inicio`}>
+            <Image
+              src={brand.assets.logoCream}
+              alt={brand.publicName}
+              width={1000}
+              height={1000}
+              sizes="180px"
+            />
           </Link>
-          <p>
-            Una estadía simple, cálida y cercana en {content.city}, con habitaciones
-            privadas y espacios para compartir.
-          </p>
+          <p className="site-footer__descriptor">{brand.descriptor}</p>
+          <p>Una estadía cálida y cercana en {content.city}, con habitaciones privadas y espacios para compartir.</p>
         </div>
 
         <div>
           <p className="footer-title">Explorá</p>
           <nav className="footer-links" aria-label="Navegación del pie">
-            {navigation.slice(1).map((item) => (
+            {footerNavigation.map((item) => (
               <Link key={item.href} href={item.href}>{item.label}</Link>
             ))}
           </nav>
@@ -42,8 +45,8 @@ export function SiteFooter({ content }: { content: PublicSiteContent }) {
             <a href={contactHref} target="_blank" rel="noreferrer">
               WhatsApp {content.whatsapp}
             </a>
-            <a href={socialConfig.instagramUrl} target="_blank" rel="noreferrer">
-              Instagram {socialConfig.instagramHandle}
+            <a href={brand.instagram.url} target="_blank" rel="noreferrer">
+              Instagram {brand.instagram.handle}
             </a>
             <Link href="/ubicacion">{publicFullAddress(content)}</Link>
           </div>
@@ -51,7 +54,7 @@ export function SiteFooter({ content }: { content: PublicSiteContent }) {
       </div>
 
       <div className="shell site-footer__bottom">
-        <p>© {new Date().getFullYear()} {content.name}</p>
+        <p>© {new Date().getFullYear()} {brand.publicName}</p>
         <nav aria-label="Información legal">
           <Link href="/politicas">Políticas</Link>
           <Link href="/privacidad">Privacidad</Link>

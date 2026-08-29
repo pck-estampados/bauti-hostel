@@ -84,13 +84,15 @@ async function render(pathname = "/", requestHeaders = {}) {
   });
 }
 
-test("renders the real Hostel Bauti public home", async () => {
+test("renders the real Casa Albor public home", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>Hostel Bauti \| Alojamiento en Ezeiza<\/title>/i);
+  assert.match(html, /<title>Casa Albor \| Casa boutique en Ezeiza<\/title>/i);
+  assert.match(html, /Casa boutique · Estadías &amp; Experiencias/i);
+  assert.match(html, /casa-albor-(?:logo|isotipo)/i);
   assert.match(html, /Descansá cerca/);
   assert.match(html, /Consultar por WhatsApp/);
   assert.match(html, /Uruguayana 235/);
@@ -123,7 +125,7 @@ test("server-renders every primary public route", async () => {
     const response = await render(route);
     assert.equal(response.status, 200, `Expected ${route} to render`);
     const html = await response.text();
-    assert.match(html, /Hostel Bauti/);
+    assert.match(html, /Casa Albor/);
     assert.doesNotMatch(html, /\bDEMO\b|Pendiente de carga|contenido ficticio/i);
   }
 });
@@ -135,7 +137,7 @@ test("renders the public gallery empty without fictitious images or authenticati
   assert.match(html, /Las fotografías reales estarán disponibles próximamente/);
   assert.match(html, /Pedir fotos por WhatsApp/);
   assert.match(html, /Ver Instagram/);
-  assert.doesNotMatch(html, /<img\b|Habitación Matrimonial|imagen demo|placeholder/i);
+  assert.doesNotMatch(html, /hostel-media\/gallery\/[0-9a-f-]+\.(?:jpg|png|webp)|Habitación Matrimonial|imagen demo|placeholder/i);
   assert.doesNotMatch(html, /acceso-interno|Iniciar sesión/i);
 });
 

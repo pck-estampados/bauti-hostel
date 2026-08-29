@@ -44,7 +44,7 @@ function uploadFile({
 }
 
 const metadata = {
-  altText: "Fachada del Hostel Bauti",
+  altText: "Fachada de Casa Albor",
   caption: null,
   category: "recepcion",
   sortOrder: 0,

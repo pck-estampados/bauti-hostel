@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { AccommodationInquiry } from "@/app/components/accommodation-inquiry";
 import { AvailabilityForm } from "@/app/components/availability-form";
 import { FaqList } from "@/app/components/faq-list";
 import { RoomCard } from "@/app/components/room-card";
 import { SectionHeading } from "@/app/components/section-heading";
+import { brand } from "@/app/lib/brand";
 import {
   confirmedAmenities,
   confirmedSpaces,
@@ -28,8 +30,9 @@ export default async function HomePage() {
   );
   const lodgingBusinessJsonLd = {
     "@context": "https://schema.org",
-    "@type": "Hostel",
-    name: content.name,
+    "@type": "LodgingBusiness",
+    name: brand.publicName,
+    description: brand.descriptor,
     address: {
       "@type": "PostalAddress",
       streetAddress: content.address,
@@ -64,19 +67,25 @@ export default async function HomePage() {
                 Consultar por WhatsApp
               </a>
             </div>
-            <div className="hero__trust" aria-label="Servicios principales">
-              <span>Desayuno incluido</span>
-              <span>WiFi</span>
-              <span>Patio &amp; pileta</span>
+            <div className="hero__trust" aria-label="Servicios principales" role="list">
+              <span role="listitem">Desayuno incluido</span>
+              <span role="listitem">WiFi</span>
+              <span role="listitem">Patio &amp; pileta</span>
             </div>
           </div>
 
-          <div className="hero-art" aria-label={`Composición gráfica de ${content.name}`}>
+          <div className="hero-art" aria-label={`Composición gráfica de ${content.name}`} role="img">
             <div className="hero-art__sun" />
             <div className="hero-art__arch">
-              <span>HB</span>
-              <p>{content.name}</p>
-              <small>{content.city} · Argentina</small>
+              <Image
+                className="hero-art__logo"
+                src={brand.assets.logoCream}
+                alt={brand.publicName}
+                width={1000}
+                height={1000}
+                sizes="(max-width: 820px) 250px, 320px"
+              />
+              <small>{brand.descriptor}</small>
             </div>
             <div className="hero-art__caption">
               <span>{content.address}</span>
@@ -94,7 +103,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="section intro-section">
+      <section className="section intro-section" id="la-casa">
         <div className="shell intro-grid">
           <div>
             <p className="eyebrow">Hospitalidad sin vueltas</p>

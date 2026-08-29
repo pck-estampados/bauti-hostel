@@ -1,20 +1,5 @@
 import type { PublicSiteContent } from "@/app/lib/public-site-types";
 
-export const socialConfig = {
-  instagramHandle: "@hostel_bauti.ar",
-  instagramUrl: "https://www.instagram.com/hostel_bauti.ar/",
-} as const;
-
-export const navigation = [
-  { href: "/", label: "Inicio" },
-  { href: "/habitaciones", label: "Habitaciones" },
-  { href: "/servicios", label: "Servicios" },
-  { href: "/galeria", label: "Galería" },
-  { href: "/ubicacion", label: "Ubicación" },
-  { href: "/preguntas-frecuentes", label: "Preguntas frecuentes" },
-  { href: "/contacto", label: "Contacto" },
-] as const;
-
 export const confirmedAmenities = [
   {
     code: "DE",
@@ -63,7 +48,7 @@ export type PublicRoom = {
   tone: "clay" | "sage" | "sand";
 };
 
-// Se completará únicamente con habitaciones confirmadas por Hostel Bauti.
+// Se completará únicamente con habitaciones confirmadas por Casa Albor.
 // La UI maneja este estado vacío sin publicar inventario no confirmado.
 export const publishedRooms: readonly PublicRoom[] = [];
 

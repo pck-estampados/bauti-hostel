@@ -28,7 +28,7 @@ export default function ServicesPage() {
             ))}
           </div>
           <div className="two-column-note">
-            <div><span>Sin estacionamiento</span><p>El hostel no posee estacionamiento propio.</p></div>
+            <div><span>Sin estacionamiento</span><p>El alojamiento no posee estacionamiento propio.</p></div>
             <div><span>Baños compartidos</span><p>Las habitaciones privadas no tienen baño privado.</p></div>
           </div>
         </div>

@@ -9,7 +9,7 @@ export default async function PublicLayout({ children }: { children: React.React
   const content = await getPublicSiteContent();
   return (
     <>
-      <SiteHeader content={content} />
+      <SiteHeader />
       {children}
       <FloatingWhatsApp content={content} />
       <SiteFooter content={content} />

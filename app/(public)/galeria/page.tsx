@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { PageHero } from "@/app/components/page-hero";
+import { brand } from "@/app/lib/brand";
 import { MEDIA_CATEGORY_LABELS } from "@/app/lib/media-types";
 import { getPublicGallery } from "@/app/lib/public-gallery";
 import { getPublicSiteContent } from "@/app/lib/public-site-content";
 import {
   generalWhatsappMessage,
-  socialConfig,
   whatsappHref,
 } from "@/app/lib/site";
 
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   title: "Galería",
   alternates: { canonical: "/galeria" },
   description:
-    "Fotografías reales publicadas por Hostel Bauti en Ezeiza, Buenos Aires.",
+    "Fotografías reales publicadas por Casa Albor en Ezeiza, Buenos Aires.",
 };
 
 export default async function GalleryPage() {
@@ -32,7 +32,7 @@ export default async function GalleryPage() {
       <PageHero
         eyebrow="Galería del alojamiento"
         title={`Conocé ${content.name}`}
-        description="Este espacio reúne únicamente fotografías reales publicadas por el hostel."
+        description="Este espacio reúne únicamente fotografías reales publicadas por el alojamiento."
         aside="Fotos reales"
       />
       <section className="section page-section">
@@ -74,7 +74,7 @@ export default async function GalleryPage() {
               <a className="button button--primary" href={contactHref} target="_blank" rel="noreferrer">
                 Pedir fotos por WhatsApp
               </a>
-              <a className="button button--ghost" href={socialConfig.instagramUrl} target="_blank" rel="noreferrer">
+              <a className="button button--ghost" href={brand.instagram.url} target="_blank" rel="noreferrer">
                 Ver Instagram
               </a>
             </div>

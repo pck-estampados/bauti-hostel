@@ -923,6 +923,24 @@ a.contact-card:hover { transform: translateY(-5px); }
 .admin-service-room fieldset label strong { font-size: .63rem; }
 .admin-service-room fieldset label small { overflow: hidden; color: var(--admin-muted); font-size: .55rem; text-overflow: ellipsis; white-space: nowrap; }
 
+/* Real room inventory management */
+.admin-room-loading { display: flex; min-height: 280px; align-items: center; justify-content: center; gap: 12px; color: var(--admin-muted); }
+.admin-room-loading > span { width: 18px; height: 18px; border: 2px solid rgba(32,48,39,.16); border-top-color: var(--clay); border-radius: 50%; animation: admin-spin .8s linear infinite; }
+@keyframes admin-spin { to { transform: rotate(360deg); } }
+.admin-room-management-panel { margin-bottom: 28px; padding: 26px; border: 1px solid var(--line); border-radius: 20px; background: var(--admin-panel); box-shadow: 0 18px 45px rgba(32,48,39,.06); }
+.admin-room-management-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 14px; }
+.admin-room-management-record { min-width: 0; }
+.admin-room-management-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 9px 14px; padding: 15px 20px 0; color: var(--admin-muted); font-size: .64rem; }
+.admin-room-status-form { display: flex; align-items: end; gap: 10px; margin: 14px 20px 0; padding: 14px; border-radius: 12px; background: var(--cream); }
+.admin-room-status-form label { display: flex; min-width: 180px; flex: 1; flex-direction: column; gap: 5px; color: var(--admin-muted); font-size: .62rem; font-weight: 800; }
+.admin-room-status-form select { min-height: 40px; padding: 8px 10px; border: 1px solid rgba(32,48,39,.18); border-radius: 9px; background: var(--white); color: var(--ink); }
+.admin-room-management-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: 8px; }
+.admin-room-prerequisite { padding: 24px; border: 1px dashed rgba(32,48,39,.24); border-radius: 15px; background: var(--cream); }
+.admin-room-prerequisite strong { font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; }
+.admin-room-prerequisite p, .admin-room-management-note { margin: 6px 0 14px; color: var(--admin-muted); font-size: .7rem; }
+.admin-room-management-note { margin-top: -8px; margin-bottom: 17px; }
+.admin-check-field--locked { color: var(--admin-muted); cursor: default; }
+
 /* Managed media gallery */
 .admin-button--danger { border-color: rgba(153,46,38,.22); background: #fff7f5; color: #922f28; }
 .admin-button--danger:hover { background: #f9e3df; }
@@ -1011,6 +1029,7 @@ a.contact-card:hover { transform: translateY(-5px); }
   .admin-access-summary { grid-template-columns: 1fr 1fr; }
   .admin-access-verdict { justify-self: start; }
   .admin-config-records--grid, .admin-bed-groups { grid-template-columns: 1fr; }
+  .admin-room-management-grid { grid-template-columns: 1fr; }
   .admin-service-rooms { grid-template-columns: 1fr; }
   .admin-media-upload > form > fieldset { grid-template-columns: 1fr; }
   .admin-media-upload__preview { max-width: 420px; }
@@ -1054,6 +1073,11 @@ a.contact-card:hover { transform: translateY(-5px); }
   .admin-field-grid--five { grid-template-columns: 1fr; }
   .admin-config-actions { align-items: stretch; flex-direction: column; }
   .admin-config-actions .admin-button { width: 100%; }
+  .admin-room-management-panel { padding: 20px; }
+  .admin-room-management-actions { flex-direction: column; }
+  .admin-room-management-actions .admin-button { width: 100%; }
+  .admin-room-status-form { align-items: stretch; flex-direction: column; }
+  .admin-room-status-form .admin-button { width: 100%; }
   .admin-notice { align-items: start; flex-direction: column; gap: 5px; }
   .admin-media-heading { align-items: stretch; flex-direction: column; }
   .admin-media-filters, .admin-media-filters label { width: 100%; }

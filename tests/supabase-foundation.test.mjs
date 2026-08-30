@@ -144,9 +144,10 @@ test("extends inventory additively with RLS, audit and no invented private bathr
   assert.match(repository, /set_room_operational_status/);
   assert.match(validation, /baseRate: z\.coerce\.number\(\)\.positive/);
   assert.match(validation, /quantity: z\.coerce\.number\(\)\.int\(\)\.min\(1\)/);
-  for (const page of [reservation, walkIn, roomsPage]) {
+  for (const page of [reservation, walkIn]) {
     assert.match(page, /Todavía no hay habitaciones configuradas\. Completá el inventario desde Configuración\./);
   }
+  assert.match(roomsPage, /SupabaseRoomManagementRepository/);
   assert.match(reservation, /mode === "demo" \? DEFAULT_REFERENCE_RATE_ARS/);
   assert.match(walkIn, /mode === "demo" \? DEFAULT_REFERENCE_RATE_ARS/);
 });

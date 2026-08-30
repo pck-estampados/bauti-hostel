@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
+import { readFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { fileURLToPath } from "node:url";
 import { after, before, test } from "node:test";
@@ -163,10 +164,11 @@ test("keeps the availability handoff transparent", async () => {
   assert.doesNotMatch(html, /Reserva confirmada|Pago aprobado/);
 });
 
-test("renders public schedules and policies from the safe fallback", async () => {
-  const [locationResponse, policiesResponse] = await Promise.all([
+test("renders public schedules and policies from the safe source with documented fallback", async () => {
+  const [locationResponse, policiesResponse, publicContentSource] = await Promise.all([
     render("/ubicacion"),
     render("/politicas"),
+    readFile(new URL("../app/lib/public-site-content.ts", import.meta.url), "utf8"),
   ]);
   const locationHtml = await locationResponse.text();
   const policiesHtml = await policiesResponse.text();
@@ -174,7 +176,9 @@ test("renders public schedules and policies from the safe fallback", async () =>
   assert.equal(locationResponse.status, 200);
   assert.equal(policiesResponse.status, 200);
   assert.match(locationHtml, /08:00[\s\S]{0,40}a[\s\S]{0,40}22:00/);
-  assert.match(policiesHtml, /23:00[\s\S]{0,40}a[\s\S]{0,40}08:00/);
+  assert.match(policiesHtml, /Horario de descanso[\s\S]{0,120}De \d{2}:\d{2} a \d{2}:\d{2}/);
+  assert.match(publicContentSource, /quietHoursFrom: "23:00"/);
+  assert.match(publicContentSource, /quietHoursUntil: "08:00"/);
   assert.match(locationHtml, /rel="canonical" href="http:\/\/localhost:3000\/ubicacion"/);
   assert.match(policiesHtml, /Las mascotas se admiten/);
   assert.doesNotMatch(

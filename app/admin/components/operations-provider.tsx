@@ -33,6 +33,7 @@ type OperationsContextValue = {
   state: OperationsState;
   actor: string;
   mode: AppMode;
+  permissions: string[];
   resetDemo: () => void;
   addGuest: (input: GuestInput) => Promise<void>;
   updateGuest: (guestId: string, input: GuestInput) => Promise<void>;
@@ -44,7 +45,7 @@ type OperationsContextValue = {
   checkOut: (reservationId: string) => Promise<void>;
   addPayment: (input: { reservationId: string; amount: number; method: PaymentMethod; reference?: string; note?: string }) => Promise<void>;
   addNote: (input: NoteInput) => Promise<void>;
-  changeRoomStatus: (roomId: string, status: RoomStatus) => Promise<void>;
+  changeRoomStatus: (roomId: string, status: RoomStatus, reason?: string) => Promise<void>;
 };
 
 const OperationsContext = createContext<OperationsContextValue | null>(null);
@@ -54,6 +55,7 @@ type ProviderProps = {
   actor?: string;
   mode?: AppMode;
   initialState?: OperationsState;
+  permissions?: string[];
 };
 
 export function OperationsProvider({
@@ -61,6 +63,7 @@ export function OperationsProvider({
   actor = DEMO_OPERATOR,
   mode = "demo",
   initialState,
+  permissions = [],
 }: ProviderProps) {
   const [state, setState] = useState<OperationsState>(() => initialState ?? createDemoOperationsState());
 
@@ -89,6 +92,7 @@ export function OperationsProvider({
     state,
     actor,
     mode,
+    permissions,
     resetDemo: () => { if (mode === "demo") setState(createDemoOperationsState()); },
     addGuest: (input) => execute("addGuest", input, (previous) => addGuest(previous, input, actor)),
     updateGuest: (guestId, input) => execute("updateGuest", { guestId, ...input }, (previous) => updateGuest(previous, guestId, input, actor)),
@@ -100,10 +104,10 @@ export function OperationsProvider({
     checkOut: (reservationId) => execute("checkOut", { reservationId }, (previous) => performCheckOut(previous, reservationId, actor)),
     addPayment: (input) => execute("registerPayment", input, (previous) => registerPayment(previous, input, actor)),
     addNote: (input) => execute("addNote", input, (previous) => addInternalNote(previous, input, actor)),
-    changeRoomStatus: (roomId, status) => execute("changeRoomStatus", { roomId, status }, (previous) => setRoomStatus(previous, roomId, status, actor)),
+    changeRoomStatus: (roomId, status, reason) => execute("changeRoomStatus", { roomId, status, reason }, (previous) => setRoomStatus(previous, roomId, status, actor)),
   // State updates use React's functional form; state itself is exposed in the context value.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [actor, mode, state]);
+  }), [actor, mode, permissions, state]);
 
   return <OperationsContext.Provider value={value}>{children}</OperationsContext.Provider>;
 }

@@ -32,7 +32,7 @@ function datesAreOrdered(value: { checkIn: string; checkOut: string }) {
 }
 
 export const walkInInputSchema = z
-  .object({ ...guestFields, ...stayFields })
+  .object({ guestId: uuidSchema.optional(), ...guestFields, ...stayFields })
   .strict()
   .refine(datesAreOrdered, { message: "La salida debe ser posterior al ingreso.", path: ["checkOut"] });
 

@@ -10,6 +10,7 @@ import type {
   ConfigurationSnapshot,
 } from "../data/configuration-types";
 import { AdminPageHeader, EmptyState, formatCurrency, roomStatusLabel, StatusPill } from "../components/ui";
+import { allowedRoomStatusTransitions } from "../data/stay-operations-core";
 
 type CurrentUser = {
   id: string;
@@ -44,11 +45,6 @@ const progressStatusLabels = {
   incomplete: "Incompleto",
   configured: "Configurado",
 } as const;
-
-const roomStatusOptions = [
-  "available", "reserved", "occupied", "ready", "clean", "pending_cleaning", "cleaning",
-  "maintenance", "blocked", "out_of_service",
-] as const;
 
 function value(form: FormData, name: string) {
   return String(form.get(name) ?? "").trim();
@@ -424,7 +420,7 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
                     <label>Tipo<select defaultValue={room.roomTypeId ?? ""} name="roomTypeId"><option value="">Sin tipo asignado</option>{state.roomTypes.map((item) => <option key={item.id} value={item.id}>{item.publicName || item.internalName}</option>)}</select></label>
                     <label>Capacidad<input defaultValue={room.capacity} max="30" min="1" name="capacity" required type="number" /></label>
                     <label>Planta o sector<input defaultValue={room.sector} name="sector" /></label>
-                    <label>Estado operativo<select defaultValue={room.status} name="status">{roomStatusOptions.map((status) => <option key={status} value={status}>{roomStatusLabel(status)}</option>)}</select></label>
+                    <label>Estado operativo<select defaultValue={room.status} name="status">{[room.status, ...allowedRoomStatusTransitions(room.status)].map((status) => <option key={status} value={status}>{roomStatusLabel(status)}</option>)}</select></label>
                     <label className="admin-field--full">Observaciones internas<textarea defaultValue={room.internalNotes} name="internalNotes" /></label>
                     <label className="admin-check-field admin-field--full"><input defaultChecked={room.active} name="active" type="checkbox" /> Habitación activa en el inventario</label>
                   </div>

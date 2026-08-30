@@ -1,20 +1,12 @@
-import type { OperationsState } from "./types";
+import type { OperationsState } from "./types.ts";
+import { hostelLocalDate, STAY_OPERATION_TIME_ZONE } from "../data/stay-operations-core.ts";
 
-export const HOSTEL_TIME_ZONE = "America/Argentina/Buenos_Aires";
+export const HOSTEL_TIME_ZONE = STAY_OPERATION_TIME_ZONE;
 export const DEFAULT_REFERENCE_RATE_ARS = 50_000;
 export const DEMO_OPERATOR = "Recepción de prueba";
 
 export function hostelDate(offsetDays = 0): string {
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone: HOSTEL_TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-  const today = formatter.format(new Date());
-  const date = new Date(`${today}T12:00:00-03:00`);
-  date.setUTCDate(date.getUTCDate() + offsetDays);
-  return formatter.format(date);
+  return hostelLocalDate(new Date(), offsetDays);
 }
 
 function atLocalTime(date: string, time: string): string {
@@ -30,10 +22,10 @@ export function createDemoOperationsState(): OperationsState {
 
   return {
     rooms: [
-      { id: "room-demo-a", code: "DEMO-A", displayName: "Habitación demo A", capacity: 2, status: "occupied", isDemo: true },
-      { id: "room-demo-b", code: "DEMO-B", displayName: "Habitación demo B", capacity: 3, status: "ready", isDemo: true },
-      { id: "room-demo-c", code: "DEMO-C", displayName: "Habitación demo C", capacity: 2, status: "occupied", isDemo: true },
-      { id: "room-demo-d", code: "DEMO-D", displayName: "Habitación demo D", capacity: 4, status: "maintenance", statusNote: "Incidencia de prueba: revisar cerradura", isDemo: true },
+      { id: "room-demo-a", code: "DEMO-A", displayName: "Habitación demo A", capacity: 2, status: "occupied", active: true, isDemo: true },
+      { id: "room-demo-b", code: "DEMO-B", displayName: "Habitación demo B", capacity: 3, status: "ready", active: true, isDemo: true },
+      { id: "room-demo-c", code: "DEMO-C", displayName: "Habitación demo C", capacity: 2, status: "occupied", active: true, isDemo: true },
+      { id: "room-demo-d", code: "DEMO-D", displayName: "Habitación demo D", capacity: 4, status: "maintenance", statusNote: "Incidencia de prueba: revisar cerradura", active: true, isDemo: true },
     ],
     guests: [
       { id: "guest-demo-a", firstName: "Huésped", lastName: "de prueba A", phone: "+54 9 11 0000-0001", createdAt: atLocalTime(yesterday, "14:10"), isDemo: true },
@@ -74,5 +66,6 @@ export function createDemoOperationsState(): OperationsState {
     ],
     audit: [],
     availabilityBlocks: [],
+    housekeepingTasks: [],
   };
 }

@@ -24,11 +24,11 @@ const RESERVATION_A = "123e4567-e89b-42d3-a456-426614174004";
 function state(overrides = {}) {
   return {
     rooms: [
-      { id: ROOM_A, code: "A", displayName: "A", capacity: 2, baseRate: 60000, inventoryValid: true, status: "ready", isDemo: false },
-      { id: ROOM_B, code: "B", displayName: "B", capacity: 4, baseRate: 80000, inventoryValid: true, status: "available", isDemo: false },
+      { id: ROOM_A, code: "A", displayName: "A", capacity: 2, baseRate: 60000, inventoryValid: true, status: "ready", active: true, isDemo: false },
+      { id: ROOM_B, code: "B", displayName: "B", capacity: 4, baseRate: 80000, inventoryValid: true, status: "available", active: true, isDemo: false },
     ],
     guests: [{ id: GUEST_A, firstName: "Ana", lastName: "Pérez", phone: "+54 11 1234 5678", email: "ana@example.com", createdAt: "2026-08-01T12:00:00Z", isDemo: false }],
-    reservations: [], payments: [], notes: [], issues: [], audit: [], availabilityBlocks: [],
+    reservations: [], payments: [], notes: [], issues: [], audit: [], availabilityBlocks: [], housekeepingTasks: [],
     ...overrides,
   };
 }

@@ -679,6 +679,9 @@ a.contact-card:hover { transform: translateY(-5px); }
 .admin-metric--sage { border-top: 3px solid var(--sage); }
 .admin-metric--green { border-top: 3px solid #4f9462; }
 .admin-metric--money { border-top: 3px solid var(--ink); }
+.admin-metric-grid--operations { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.admin-operation-alert { margin: -16px 0 24px; padding: 13px 16px; border: 1px solid #e6bbb4; border-radius: 12px; background: #fff1ee; color: #7c352e; font-size: .72rem; }
+.admin-operation-alert strong { margin-right: 5px; }
 .admin-section { margin-top: 38px; }
 .admin-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
 .admin-section-heading h2, .admin-panel__heading h2 { margin-bottom: 0; font-family: var(--font-display); font-size: 1.65rem; font-weight: 600; letter-spacing: -.03em; line-height: 1.05; }
@@ -721,6 +724,21 @@ a.contact-card:hover { transform: translateY(-5px); }
 .admin-room-strip article { display: flex; min-height: 105px; flex-direction: column; align-items: start; padding: 16px; border: 1px solid var(--line); border-radius: 15px; background: var(--admin-panel); }
 .admin-room-strip article > span:first-child { color: var(--admin-muted); font-size: .58rem; font-weight: 850; letter-spacing: .08em; }
 .admin-room-strip article > strong { margin: 8px 0 auto; font-size: .76rem; }
+.admin-room-occupancy-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.admin-room-occupancy-grid article { min-height: 250px; }
+.admin-room-occupancy-grid article > .admin-status { margin: 10px 0 16px; }
+.admin-room-occupancy-grid article > p { margin-top: 18px; color: var(--admin-muted); font-size: .68rem; }
+.admin-room-occupancy-grid dl { width: 100%; margin: 0; }
+.admin-room-occupancy-grid dl div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--line); font-size: .65rem; }
+.admin-room-occupancy-grid dt { color: var(--admin-muted); }
+.admin-room-occupancy-grid dd { margin: 0; font-weight: 750; text-align: right; }
+.admin-room-attention { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 14px 0; border-top: 1px solid var(--line); }
+.admin-room-attention > div:first-child { display: grid; gap: 4px; }
+.admin-room-attention > div:first-child strong { font-size: .76rem; }
+.admin-room-attention > div:first-child span { color: var(--admin-muted); font-size: .64rem; }
+.admin-room-attention__actions { display: flex; grid-column: 1 / -1; align-items: end; gap: 10px; }
+.admin-room-attention__actions label { display: grid; flex: 1; gap: 5px; color: var(--admin-muted); font-size: .61rem; font-weight: 800; }
+.admin-room-attention__actions select { min-height: 38px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--admin-ink); }
 .admin-empty { display: flex; min-height: 180px; flex-direction: column; align-items: center; justify-content: center; padding: 25px; text-align: center; }
 .admin-empty > span { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 50%; background: #dce9dc; color: #2c6037; }
 .admin-empty h3 { margin: 10px 0 4px; font-family: var(--font-display); font-size: 1.3rem; }
@@ -1062,7 +1080,9 @@ a.contact-card:hover { transform: translateY(-5px); }
 
 @media (max-width: 1220px) {
   .admin-metric-grid, .admin-quick-grid { grid-template-columns: repeat(3, 1fr); }
+  .admin-metric-grid--operations { grid-template-columns: repeat(4, 1fr); }
   .admin-room-grid, .admin-guest-grid { grid-template-columns: repeat(2, 1fr); }
+  .admin-room-occupancy-grid { grid-template-columns: repeat(2, 1fr); }
   .admin-list-panel__head, .admin-list-row { grid-template-columns: 1.25fr .8fr .9fr .8fr .6fr; }
   .admin-list-panel__head > :nth-child(3), .admin-list-row > :nth-child(3) { display: none; }
   .admin-list-panel__head--payments, .admin-list-row--payments { grid-template-columns: 1.2fr .9fr .7fr .7fr .7fr .55fr; }
@@ -1118,6 +1138,7 @@ a.contact-card:hover { transform: translateY(-5px); }
   .admin-record { grid-template-columns: auto minmax(0, 1fr) auto; }
   .admin-record .admin-status { display: none; }
   .admin-room-strip__grid, .admin-room-grid, .admin-guest-grid { grid-template-columns: 1fr; }
+  .admin-room-occupancy-grid { grid-template-columns: 1fr; }
   .admin-room-card, .admin-guest-card { min-height: 260px; }
   .admin-list-panel { overflow: visible; border: 0; background: transparent; }
   .admin-list-panel__head { display: none; }

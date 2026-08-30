@@ -52,18 +52,18 @@ export async function GET() {
   return NextResponse.json({ state: await context.repository.loadSnapshot() });
 }
 
-const operationPermissions: Record<z.infer<typeof operationSchema>["operation"], string> = {
-  addGuest: "guests.manage",
-  updateGuest: "guests.manage",
-  createWalkIn: "reservations.manage",
-  createReservation: "reservations.manage",
-  updateReservation: "reservations.manage",
-  cancelReservation: "reservations.manage",
-  checkIn: "reservations.manage",
-  checkOut: "reservations.manage",
-  registerPayment: "payments.manage",
-  addNote: "notes.manage",
-  changeRoomStatus: "rooms.manage",
+const operationPermissions: Record<z.infer<typeof operationSchema>["operation"], string[]> = {
+  addGuest: ["guests.manage"],
+  updateGuest: ["guests.manage"],
+  createWalkIn: ["reservations.manage"],
+  createReservation: ["reservations.manage"],
+  updateReservation: ["reservations.manage"],
+  cancelReservation: ["reservations.manage"],
+  checkIn: ["reservations.manage"],
+  checkOut: ["reservations.manage"],
+  registerPayment: ["payments.manage"],
+  addNote: ["notes.manage"],
+  changeRoomStatus: ["rooms.manage", "housekeeping.manage"],
 };
 
 export async function POST(request: NextRequest) {
@@ -73,8 +73,8 @@ export async function POST(request: NextRequest) {
     if (!context) return NextResponse.json({ error: "Sesión no válida." }, { status: 401 });
 
     const operation = operationSchema.parse(await request.json());
-    const requiredPermission = operationPermissions[operation.operation];
-    if (!context.staff.permissions.includes(requiredPermission)) {
+    const acceptedPermissions = operationPermissions[operation.operation];
+    if (!acceptedPermissions.some((permission) => context.staff.permissions.includes(permission))) {
       return NextResponse.json({ error: "No tenés permiso para realizar esta operación." }, { status: 403 });
     }
     const repository = context.repository;

@@ -5,6 +5,7 @@ import type {
   AvailabilityBlock,
   AuditEvent,
   Guest,
+  HousekeepingTask,
   InternalNote,
   MaintenanceIssue,
   OperationsState,
@@ -29,7 +30,7 @@ import {
 
 type RoomRow = {
   id: string; room_type_id: string | null; code: string; display_name: string; capacity: number;
-  status: Room["status"]; status_note: string | null;
+  status: Room["status"]; status_note: string | null; active: boolean;
 };
 type RoomRateRow = { id: string; base_rate: number | null };
 type BedCapacityRow = { room_id: string; capacity: number; quantity?: number; active: boolean };
@@ -67,6 +68,12 @@ type ActivityRow = {
 type AvailabilityBlockRow = {
   id: string; room_id: string; check_in: string; check_out: string; status: AvailabilityBlock["status"];
 };
+type HousekeepingTaskRow = {
+  id: string; room_id: string; reservation_id: string | null;
+  status: HousekeepingTask["status"]; priority: HousekeepingTask["priority"];
+  assigned_to: string | null; due_at: string | null; started_at: string | null;
+  completed_at: string | null; notes: string | null; created_at: string;
+};
 
 function assertNoError(error: { code?: string; message: string } | null, fallback: string): void {
   if (!error) return;
@@ -84,6 +91,15 @@ function assertNoError(error: { code?: string; message: string } | null, fallbac
     RESERVATION_NOT_EDITABLE: "El estado actual de la reserva no permite editarla.",
     RESERVATION_NOT_CANCELLABLE: "La estadía ya iniciada o finalizada no puede cancelarse.",
     INVALID_CANCELLATION_REASON: "Indicá un motivo de cancelación válido.",
+    RESERVATION_NOT_CHECKIN_READY: "La reserva no está habilitada para check-in.",
+    CHECKIN_NOT_TODAY: "La fecha de ingreso todavía no corresponde o la estadía ya venció.",
+    ROOM_NOT_CHECKIN_READY: "La habitación no está lista para recibir huéspedes.",
+    ROOM_ASSIGNMENT_MISMATCH: "La asignación de habitación no coincide con la reserva.",
+    RESERVATION_NOT_CHECKOUT_READY: "La estadía no está habilitada para check-out.",
+    ROOM_NOT_OCCUPIED: "La habitación no figura como ocupada por esta estadía.",
+    INVALID_ROOM_STATUS_TRANSITION: "Ese cambio de estado no respeta el flujo operativo de la habitación.",
+    OCCUPIED_ROOM_STATUS_LOCKED: "Una habitación ocupada sólo puede liberarse mediante check-out.",
+    INVALID_GUEST: "Revisá los datos básicos del huésped.",
   };
   if (error.message.includes("ROOM_INVENTORY_INCOMPLETE")) {
     throw new OperationsError("La habitación necesita tipo, tarifa y capacidad de camas válidos.", 422, "ROOM_INVENTORY_INCOMPLETE");
@@ -101,6 +117,14 @@ function assertNoError(error: { code?: string; message: string } | null, fallbac
   const status = error.message.includes("NOT_AUTHORIZED") || error.code === "42501"
     ? 403
     : error.message.includes("ROOM_NOT_AVAILABLE") || error.code === "23P01" || error.code === "23505"
+      || error.message.includes("RESERVATION_NOT_CHECKIN_READY")
+      || error.message.includes("CHECKIN_NOT_TODAY")
+      || error.message.includes("ROOM_NOT_CHECKIN_READY")
+      || error.message.includes("ROOM_ASSIGNMENT_MISMATCH")
+      || error.message.includes("RESERVATION_NOT_CHECKOUT_READY")
+      || error.message.includes("ROOM_NOT_OCCUPIED")
+      || error.message.includes("INVALID_ROOM_STATUS_TRANSITION")
+      || error.message.includes("OCCUPIED_ROOM_STATUS_LOCKED")
       ? 409
       : error.code === "22023" || error.code === "23514"
         ? 422
@@ -150,9 +174,9 @@ export class SupabaseOperationsRepository implements OperationsRepository {
   }
 
   async loadSnapshot(): Promise<OperationsState> {
-    const [roomsResult, guestsResult, reservationsResult, financialsResult, paymentsResult, notesResult, issuesResult, activityResult, roomRatesResult, bedCapacityResult, blocksResult] =
+    const [roomsResult, guestsResult, reservationsResult, financialsResult, paymentsResult, notesResult, issuesResult, activityResult, roomRatesResult, bedCapacityResult, blocksResult, housekeepingResult] =
       await Promise.all([
-        this.client.from("rooms").select("id, room_type_id, code, display_name, capacity, status, status_note").eq("active", true).order("code"),
+        this.client.from("rooms").select("id, room_type_id, code, display_name, capacity, status, status_note, active").order("code"),
         this.client.from("guests").select("id, first_name, last_name, phone, document_number, email, created_at").is("deleted_at", null).order("created_at", { ascending: false }),
         this.client.from("reservations").select("id, code, primary_guest_id, guest_count, check_in, check_out, expected_arrival, nightly_rate, agreed_total, status, source, external_reference, internal_summary, actual_check_in_at, actual_check_out_at, created_at, created_by, room_assignments(room_id,status)").is("deleted_at", null).order("created_at", { ascending: false }),
         this.client.from("reservation_financials").select("reservation_id, paid_total, balance"),
@@ -163,9 +187,10 @@ export class SupabaseOperationsRepository implements OperationsRepository {
         this.client.from("room_types").select("id,base_rate").eq("active", true),
         this.client.from("beds").select("room_id,capacity,quantity,active").eq("active", true),
         this.client.from("availability_blocks").select("id,room_id,check_in,check_out,status").eq("status", "active"),
+        this.client.from("housekeeping_tasks").select("id,room_id,reservation_id,status,priority,assigned_to,due_at,started_at,completed_at,notes,created_at").not("status", "in", "(completed,cancelled)").order("created_at", { ascending: false }),
       ]);
 
-    for (const result of [roomsResult, guestsResult, reservationsResult, financialsResult, paymentsResult, notesResult, issuesResult, activityResult, blocksResult]) {
+    for (const result of [roomsResult, guestsResult, reservationsResult, financialsResult, paymentsResult, notesResult, issuesResult, activityResult, blocksResult, housekeepingResult]) {
       assertNoError(result.error, "No fue posible cargar la operación del hostel.");
     }
     if (roomRatesResult.error && !isInventoryMigrationPending(roomRatesResult.error)) {
@@ -226,7 +251,7 @@ export class SupabaseOperationsRepository implements OperationsRepository {
         id: row.id, code: row.code, displayName: row.display_name, capacity: row.capacity,
         baseRate: row.room_type_id ? roomRates.get(row.room_type_id) || undefined : undefined,
         inventoryValid: Boolean(row.room_type_id && (roomRates.get(row.room_type_id) ?? 0) > 0 && (bedCapacityByRoom.get(row.id) ?? 0) >= row.capacity),
-        status: row.status, statusNote: row.status_note ?? undefined, isDemo: false,
+        status: row.status, statusNote: row.status_note ?? undefined, active: row.active, isDemo: false,
       })),
       guests: ((guestsResult.data ?? []) as GuestRow[]).map<Guest>((row) => ({
         id: row.id, firstName: row.first_name, lastName: row.last_name, phone: row.phone,
@@ -260,6 +285,19 @@ export class SupabaseOperationsRepository implements OperationsRepository {
         checkIn: row.check_in,
         checkOut: row.check_out,
         status: row.status,
+      })),
+      housekeepingTasks: ((housekeepingResult.data ?? []) as HousekeepingTaskRow[]).map((row) => ({
+        id: row.id,
+        roomId: row.room_id,
+        reservationId: row.reservation_id ?? undefined,
+        status: row.status,
+        priority: row.priority,
+        assignedTo: row.assigned_to ?? undefined,
+        dueAt: row.due_at ?? undefined,
+        startedAt: row.started_at ?? undefined,
+        completedAt: row.completed_at ?? undefined,
+        notes: row.notes ?? undefined,
+        createdAt: row.created_at,
       })),
     };
   }

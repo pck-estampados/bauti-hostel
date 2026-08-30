@@ -14,6 +14,7 @@ import {
   roomStatusLabel,
   StatusPill,
 } from "@/app/admin/components/ui";
+import { allowedRoomStatusTransitions } from "@/app/admin/data/stay-operations-core";
 
 type Props = {
   initialSnapshot: RoomManagementSnapshot;
@@ -28,19 +29,6 @@ type ApiPayload = {
   error?: string;
   state?: RoomManagementSnapshot;
 };
-
-const roomStatusOptions: ManagedRoom["status"][] = [
-  "available",
-  "reserved",
-  "occupied",
-  "pending_cleaning",
-  "cleaning",
-  "clean",
-  "ready",
-  "maintenance",
-  "blocked",
-  "out_of_service",
-];
 
 const bedTypeLabels: Record<ManagedBed["bedType"], string> = {
   single: "Individual",
@@ -521,11 +509,11 @@ export function RoomManagementConsole({
                     <form className="admin-room-status-form" onSubmit={(event) => updateRoomStatus(event, room)}>
                       <label>
                         Estado operativo
-                        <select defaultValue={room.status} disabled={!room.active} name="status">
-                          {roomStatusOptions.map((status) => <option key={status} value={status}>{roomStatusLabel(status)}</option>)}
+                        <select defaultValue={allowedRoomStatusTransitions(room.status)[0]} disabled={!room.active || !allowedRoomStatusTransitions(room.status).length} name="status">
+                          {allowedRoomStatusTransitions(room.status).map((status) => <option key={status} value={status}>{roomStatusLabel(status)}</option>)}
                         </select>
                       </label>
-                      <button className="admin-button admin-button--secondary" disabled={!canManageRooms || !room.active || busy !== ""} type="submit">
+                      <button className="admin-button admin-button--secondary" disabled={!canManageRooms || !room.active || !allowedRoomStatusTransitions(room.status).length || busy !== ""} type="submit">
                         {busy === `status-room-${room.id}` ? "Actualizando…" : "Cambiar estado"}
                       </button>
                     </form>

@@ -75,7 +75,22 @@ export type Room = {
   inventoryValid?: boolean;
   status: RoomStatus;
   statusNote?: string;
+  active: boolean;
   isDemo: boolean;
+};
+
+export type HousekeepingTask = {
+  id: string;
+  roomId: string;
+  reservationId?: string;
+  status: "pending" | "assigned" | "in_progress" | "review" | "completed" | "cancelled";
+  priority: "low" | "medium" | "high" | "critical";
+  assignedTo?: string;
+  dueAt?: string;
+  startedAt?: string;
+  completedAt?: string;
+  notes?: string;
+  createdAt: string;
 };
 
 export type Reservation = {
@@ -157,9 +172,11 @@ export type OperationsState = {
   issues: MaintenanceIssue[];
   audit: AuditEvent[];
   availabilityBlocks: AvailabilityBlock[];
+  housekeepingTasks: HousekeepingTask[];
 };
 
 export type WalkInInput = {
+  guestId?: string;
   firstName: string;
   lastName: string;
   phone: string;

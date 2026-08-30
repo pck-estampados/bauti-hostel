@@ -42,7 +42,8 @@ export function availableRoomsForStay(
   }
 
   return state.rooms.filter((room) => {
-    if ((!room.isDemo && !room.inventoryValid)
+    if (!room.active
+      || (!room.isDemo && !room.inventoryValid)
       || !reservableRoomStatuses.has(room.status)
       || room.capacity < query.guestCount) {
       return false;

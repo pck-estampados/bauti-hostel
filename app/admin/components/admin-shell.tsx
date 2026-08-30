@@ -9,6 +9,7 @@ import { brand } from "@/app/lib/brand";
 
 const navigation = [
   { href: "/admin", label: "Resumen", code: "HO" },
+  { href: "/admin/operacion", label: "Operación", code: "OP" },
   { href: "/admin/habitaciones", label: "Habitaciones", code: "HA" },
   { href: "/admin/huespedes/actuales", label: "Huéspedes alojados", code: "HU" },
   { href: "/admin/reservas", label: "Reservas", code: "RE" },

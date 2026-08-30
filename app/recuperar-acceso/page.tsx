@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState, type FormEvent } from "react";
 import { createSupabaseBrowserClient } from "@/app/lib/supabase/client";
+import { brand } from "@/app/lib/brand";
 
 export default function RecoverAccessPage() {
   const [email, setEmail] = useState("");
@@ -26,7 +28,7 @@ export default function RecoverAccessPage() {
   return (
     <main className="staff-auth">
       <section className="staff-auth__card" aria-labelledby="recover-title">
-        <Link className="staff-auth__brand" href="/"><span>HB</span><strong>Hostel Bauti<small>Administración</small></strong></Link>
+        <Link className="staff-auth__brand" href="/" aria-label={`${brand.publicName}, inicio`}><Image src={brand.assets.isotipo} alt="" width={44} height={44} /><strong>{brand.publicName}<small>Administración</small></strong></Link>
         <p className="staff-auth__eyebrow">Recuperar acceso</p>
         <h1 id="recover-title">Restablecer contraseña</h1>
         {sent ? <p>Si la cuenta existe, enviamos un enlace seguro a ese correo.</p> : (

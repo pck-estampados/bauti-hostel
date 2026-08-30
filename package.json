@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "npm run build && node --experimental-strip-types --test tests/media-gallery.test.mjs tests/rendered-html.test.mjs tests/room-management.test.mjs tests/supabase-foundation.test.mjs",
+    "test": "npm run build && node --experimental-strip-types --test tests/media-gallery.test.mjs tests/rendered-html.test.mjs tests/reservation-management.test.mjs tests/room-management.test.mjs tests/supabase-foundation.test.mjs",
     "lint": "eslint . --ignore-pattern .wrangler --ignore-pattern .vinext --ignore-pattern .npm-cache --ignore-pattern dist --ignore-pattern .next --ignore-pattern out --ignore-pattern outputs --ignore-pattern work",
     "typecheck": "tsc --noEmit"
   },
@@ -33,7 +33,7 @@
     "typescript": "5.9.3"
   },
   "overrides": {
-    "postcss": "8.5.14"
+    "postcss": "8.5.26"
   },
   "type": "module"
 }

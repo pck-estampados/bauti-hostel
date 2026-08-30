@@ -73,5 +73,6 @@ export function createDemoOperationsState(): OperationsState {
       { id: "issue-demo-a", roomId: "room-demo-d", area: "Habitación demo D", title: "Incidencia de prueba: revisar cerradura", priority: "high", status: "open", isDemo: true },
     ],
     audit: [],
+    availabilityBlocks: [],
   };
 }

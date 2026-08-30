@@ -45,5 +45,7 @@ next-env.d.ts
 /outputs/
 /work/
 /.npm-cache/
+/.pnpm-store/
+/supabase/.temp/
 .devserver.*.log
 .codex-dev.*.log

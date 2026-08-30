@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
+  AvailabilityBlock,
   AuditEvent,
   Guest,
   InternalNote,
@@ -12,11 +13,15 @@ import type {
   Room,
 } from "../lib/types";
 import type { OperationsRepository } from "./operations-repository";
+import { OperationsError } from "./operations-error";
 import {
+  cancelReservationInputSchema,
   guestInputSchema,
+  guestUpdateInputSchema,
   noteInputSchema,
   paymentInputSchema,
   reservationInputSchema,
+  reservationUpdateInputSchema,
   roomStatusInputSchema,
   uuidSchema,
   walkInInputSchema,
@@ -36,7 +41,7 @@ type ReservationRow = {
   id: string; code: string; primary_guest_id: string; guest_count: number;
   check_in: string; check_out: string; expected_arrival: string | null;
   nightly_rate: number; agreed_total: number; status: Reservation["status"];
-  source: Reservation["source"]; internal_summary: string | null;
+  source: Reservation["source"]; external_reference: string | null; internal_summary: string | null;
   actual_check_in_at: string | null; actual_check_out_at: string | null;
   created_at: string; created_by: string;
   room_assignments: Array<{ room_id: string; status: "active" | "cancelled" }> | null;
@@ -59,8 +64,11 @@ type ActivityRow = {
   id: number; action: string; entity_type: string; entity_id: string | null;
   actor_id: string | null; created_at: string; summary: string;
 };
+type AvailabilityBlockRow = {
+  id: string; room_id: string; check_in: string; check_out: string; status: AvailabilityBlock["status"];
+};
 
-function assertNoError(error: { message: string } | null, fallback: string): void {
+function assertNoError(error: { code?: string; message: string } | null, fallback: string): void {
   if (!error) return;
 
   const messages: Record<string, string> = {
@@ -71,12 +79,33 @@ function assertNoError(error: { message: string } | null, fallback: string): voi
     PAYMENT_EXCEEDS_TOTAL: "El pago supera el total de la estadía.",
     PAYMENT_EXCEEDS_BALANCE: "El pago supera el saldo pendiente.",
     OUTSTANDING_BALANCE: "La reserva todavía tiene saldo pendiente.",
+    GUEST_ALREADY_EXISTS: "Ya existe un huésped con ese documento.",
+    EXTERNAL_REFERENCE_ALREADY_EXISTS: "Ya existe una reserva con esa referencia externa.",
+    RESERVATION_NOT_EDITABLE: "El estado actual de la reserva no permite editarla.",
+    RESERVATION_NOT_CANCELLABLE: "La estadía ya iniciada o finalizada no puede cancelarse.",
+    INVALID_CANCELLATION_REASON: "Indicá un motivo de cancelación válido.",
   };
   if (error.message.includes("ROOM_INVENTORY_INCOMPLETE")) {
-    throw new Error("La habitación necesita tipo, tarifa y capacidad de camas válidos.");
+    throw new OperationsError("La habitación necesita tipo, tarifa y capacidad de camas válidos.", 422, "ROOM_INVENTORY_INCOMPLETE");
   }
+  const notFoundMessages: Record<string, string> = {
+    GUEST_NOT_FOUND: "No se encontró el huésped.",
+    RESERVATION_NOT_FOUND: "No se encontró la reserva.",
+    ROOM_NOT_FOUND: "No se encontró la habitación.",
+    ROOM_ASSIGNMENT_REQUIRED: "La reserva no tiene una habitación asignada.",
+  };
+  const notFound = Object.entries(notFoundMessages).find(([code]) => error.message.includes(code));
+  if (notFound) throw new OperationsError(notFound[1], 404, notFound[0]);
   const known = Object.entries(messages).find(([code]) => error.message.includes(code));
-  throw new Error(known?.[1] ?? fallback);
+  const code = known?.[0] ?? error.code ?? "OPERATIONS_ERROR";
+  const status = error.message.includes("NOT_AUTHORIZED") || error.code === "42501"
+    ? 403
+    : error.message.includes("ROOM_NOT_AVAILABLE") || error.code === "23P01" || error.code === "23505"
+      ? 409
+      : error.code === "22023" || error.code === "23514"
+        ? 422
+        : 500;
+  throw new OperationsError(known?.[1] ?? fallback, status, code);
 }
 
 function isInventoryMigrationPending(error: { code?: string; message: string } | null): boolean {
@@ -121,11 +150,11 @@ export class SupabaseOperationsRepository implements OperationsRepository {
   }
 
   async loadSnapshot(): Promise<OperationsState> {
-    const [roomsResult, guestsResult, reservationsResult, financialsResult, paymentsResult, notesResult, issuesResult, activityResult, roomRatesResult, bedCapacityResult] =
+    const [roomsResult, guestsResult, reservationsResult, financialsResult, paymentsResult, notesResult, issuesResult, activityResult, roomRatesResult, bedCapacityResult, blocksResult] =
       await Promise.all([
         this.client.from("rooms").select("id, room_type_id, code, display_name, capacity, status, status_note").eq("active", true).order("code"),
         this.client.from("guests").select("id, first_name, last_name, phone, document_number, email, created_at").is("deleted_at", null).order("created_at", { ascending: false }),
-        this.client.from("reservations").select("id, code, primary_guest_id, guest_count, check_in, check_out, expected_arrival, nightly_rate, agreed_total, status, source, internal_summary, actual_check_in_at, actual_check_out_at, created_at, created_by, room_assignments(room_id,status)").is("deleted_at", null).order("created_at", { ascending: false }),
+        this.client.from("reservations").select("id, code, primary_guest_id, guest_count, check_in, check_out, expected_arrival, nightly_rate, agreed_total, status, source, external_reference, internal_summary, actual_check_in_at, actual_check_out_at, created_at, created_by, room_assignments(room_id,status)").is("deleted_at", null).order("created_at", { ascending: false }),
         this.client.from("reservation_financials").select("reservation_id, paid_total, balance"),
         this.client.from("payments").select("id, reservation_id, guest_id, amount, currency, method, reference, note, occurred_at, created_by").eq("status", "posted").order("occurred_at", { ascending: false }),
         this.client.from("internal_notes").select("id, entity_type, entity_id, body, created_by, created_at").is("deleted_at", null).order("created_at", { ascending: false }),
@@ -133,9 +162,10 @@ export class SupabaseOperationsRepository implements OperationsRepository {
         this.client.from("activity_logs").select("id, action, entity_type, entity_id, actor_id, created_at, summary").order("created_at", { ascending: false }).limit(200),
         this.client.from("room_types").select("id,base_rate").eq("active", true),
         this.client.from("beds").select("room_id,capacity,quantity,active").eq("active", true),
+        this.client.from("availability_blocks").select("id,room_id,check_in,check_out,status").eq("status", "active"),
       ]);
 
-    for (const result of [roomsResult, guestsResult, reservationsResult, financialsResult, paymentsResult, notesResult, issuesResult, activityResult]) {
+    for (const result of [roomsResult, guestsResult, reservationsResult, financialsResult, paymentsResult, notesResult, issuesResult, activityResult, blocksResult]) {
       assertNoError(result.error, "No fue posible cargar la operación del hostel.");
     }
     if (roomRatesResult.error && !isInventoryMigrationPending(roomRatesResult.error)) {
@@ -175,6 +205,7 @@ export class SupabaseOperationsRepository implements OperationsRepository {
         status: row.status,
         paymentStatus: paid <= 0 ? "pending" : paid >= total ? "paid" : "partial",
         source: row.source,
+        externalReference: row.external_reference ?? undefined,
         notes: row.internal_summary ?? undefined,
         actualCheckIn: row.actual_check_in_at ?? undefined,
         actualCheckOut: row.actual_check_out_at ?? undefined,
@@ -223,6 +254,13 @@ export class SupabaseOperationsRepository implements OperationsRepository {
         entityId: row.entity_id ?? "", actor: row.actor_id ?? "Sistema",
         createdAt: row.created_at, summary: row.summary, isDemo: false,
       })),
+      availabilityBlocks: ((blocksResult.data ?? []) as AvailabilityBlockRow[]).map((row) => ({
+        id: row.id,
+        roomId: row.room_id,
+        checkIn: row.check_in,
+        checkOut: row.check_out,
+        status: row.status,
+      })),
     };
   }
 
@@ -230,6 +268,22 @@ export class SupabaseOperationsRepository implements OperationsRepository {
     const payload = guestInputSchema.parse(input);
     const { error } = await this.client.rpc("create_guest", { p_payload: payload });
     assertNoError(error, "No fue posible guardar el huésped.");
+    return this.loadSnapshot();
+  }
+
+  async updateGuest(guestId: string, input: Parameters<OperationsRepository["updateGuest"]>[1]) {
+    const payload = guestUpdateInputSchema.parse({ guestId, ...input });
+    const { error } = await this.client.rpc("update_guest", {
+      p_guest_id: payload.guestId,
+      p_payload: {
+        firstName: payload.firstName,
+        lastName: payload.lastName,
+        phone: payload.phone,
+        document: payload.document,
+        email: payload.email,
+      },
+    });
+    assertNoError(error, "No fue posible actualizar el huésped.");
     return this.loadSnapshot();
   }
 
@@ -244,8 +298,40 @@ export class SupabaseOperationsRepository implements OperationsRepository {
   async createReservation(input: Parameters<OperationsRepository["createReservation"]>[0]) {
     const payload = reservationInputSchema.parse(input);
     await this.assertRoomInventoryReady(payload.roomId);
-    const { error } = await this.client.rpc("create_reservation", { p_payload: payload });
+    const { error } = await this.client.rpc("create_reservation_v2", { p_payload: payload });
     assertNoError(error, "No fue posible crear la reserva.");
+    return this.loadSnapshot();
+  }
+
+  async updateReservation(input: Parameters<OperationsRepository["updateReservation"]>[0]) {
+    const payload = reservationUpdateInputSchema.parse(input);
+    await this.assertRoomInventoryReady(payload.roomId);
+    const { error } = await this.client.rpc("update_reservation", {
+      p_reservation_id: payload.reservationId,
+      p_payload: {
+        guestId: payload.guestId,
+        roomId: payload.roomId,
+        guestCount: payload.guestCount,
+        checkIn: payload.checkIn,
+        checkOut: payload.checkOut,
+        nightlyRate: payload.nightlyRate,
+        source: payload.source,
+        expectedArrival: payload.expectedArrival,
+        externalReference: payload.externalReference,
+        notes: payload.notes,
+      },
+    });
+    assertNoError(error, "No fue posible actualizar la reserva.");
+    return this.loadSnapshot();
+  }
+
+  async cancelReservation(reservationId: string, reason: string) {
+    const payload = cancelReservationInputSchema.parse({ reservationId, reason });
+    const { error } = await this.client.rpc("cancel_reservation", {
+      p_reservation_id: payload.reservationId,
+      p_reason: payload.reason,
+    });
+    assertNoError(error, "No fue posible cancelar la reserva.");
     return this.loadSnapshot();
   }
 

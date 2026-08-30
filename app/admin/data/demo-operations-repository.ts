@@ -1,6 +1,7 @@
 import { createDemoOperationsState, DEMO_OPERATOR } from "../lib/demo-data";
 import {
   addGuest,
+  cancelReservation,
   addInternalNote,
   createManualReservation,
   createWalkIn,
@@ -8,6 +9,8 @@ import {
   performCheckOut,
   registerPayment,
   setRoomStatus,
+  updateGuest,
+  updateReservation,
 } from "../lib/operations";
 import type { OperationsState } from "../lib/types";
 import type { OperationsRepository } from "./operations-repository";
@@ -21,11 +24,20 @@ export class DemoOperationsRepository implements OperationsRepository {
   async addGuest(input: Parameters<OperationsRepository["addGuest"]>[0]) {
     this.state = addGuest(this.state, input, this.actor); return this.loadSnapshot();
   }
+  async updateGuest(guestId: string, input: Parameters<OperationsRepository["updateGuest"]>[1]) {
+    this.state = updateGuest(this.state, guestId, input, this.actor); return this.loadSnapshot();
+  }
   async createWalkIn(input: Parameters<OperationsRepository["createWalkIn"]>[0]) {
     this.state = createWalkIn(this.state, input, this.actor); return this.loadSnapshot();
   }
   async createReservation(input: Parameters<OperationsRepository["createReservation"]>[0]) {
     this.state = createManualReservation(this.state, input, this.actor); return this.loadSnapshot();
+  }
+  async updateReservation(input: Parameters<OperationsRepository["updateReservation"]>[0]) {
+    this.state = updateReservation(this.state, input, this.actor); return this.loadSnapshot();
+  }
+  async cancelReservation(reservationId: string, reason: string) {
+    this.state = cancelReservation(this.state, reservationId, reason, this.actor); return this.loadSnapshot();
   }
   async checkIn(reservationId: string) {
     this.state = performCheckIn(this.state, reservationId, this.actor); return this.loadSnapshot();

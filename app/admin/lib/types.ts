@@ -58,6 +58,14 @@ export type Guest = {
   isDemo: boolean;
 };
 
+export type AvailabilityBlock = {
+  id: string;
+  roomId: string;
+  checkIn: string;
+  checkOut: string;
+  status: "active" | "cancelled";
+};
+
 export type Room = {
   id: string;
   code: string;
@@ -86,6 +94,7 @@ export type Reservation = {
   status: ReservationStatus;
   paymentStatus: PaymentStatus;
   source: ReservationSource;
+  externalReference?: string;
   notes?: string;
   actualCheckIn?: string;
   actualCheckOut?: string;
@@ -147,12 +156,14 @@ export type OperationsState = {
   notes: InternalNote[];
   issues: MaintenanceIssue[];
   audit: AuditEvent[];
+  availabilityBlocks: AvailabilityBlock[];
 };
 
 export type WalkInInput = {
   firstName: string;
   lastName: string;
   phone: string;
+  email?: string;
   document?: string;
   guestCount: number;
   roomId: string;
@@ -165,8 +176,24 @@ export type WalkInInput = {
 };
 
 export type ManualReservationInput = Omit<WalkInInput, "amountPaid" | "paymentMethod"> & {
+  guestId?: string;
   amountPaid: number;
   paymentMethod: PaymentMethod;
   source: Exclude<ReservationSource, "walk_in">;
   expectedArrival?: string;
+  externalReference?: string;
+};
+
+export type ReservationUpdateInput = {
+  reservationId: string;
+  guestId: string;
+  roomId: string;
+  guestCount: number;
+  checkIn: string;
+  checkOut: string;
+  nightlyRate: number;
+  source: Exclude<ReservationSource, "walk_in">;
+  expectedArrival?: string;
+  externalReference?: string;
+  notes?: string;
 };

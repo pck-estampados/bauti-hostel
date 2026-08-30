@@ -4,6 +4,7 @@ import type {
   OperationsState,
   PaymentMethod,
   RoomStatus,
+  ReservationUpdateInput,
   WalkInInput,
 } from "../lib/types";
 
@@ -20,8 +21,11 @@ export type NoteInput = Omit<InternalNote, "id" | "author" | "createdAt" | "isDe
 export interface OperationsRepository {
   loadSnapshot(): Promise<OperationsState>;
   addGuest(input: GuestInput): Promise<OperationsState>;
+  updateGuest(guestId: string, input: GuestInput): Promise<OperationsState>;
   createWalkIn(input: WalkInInput): Promise<OperationsState>;
   createReservation(input: ManualReservationInput): Promise<OperationsState>;
+  updateReservation(input: ReservationUpdateInput): Promise<OperationsState>;
+  cancelReservation(reservationId: string, reason: string): Promise<OperationsState>;
   checkIn(reservationId: string): Promise<OperationsState>;
   checkOut(reservationId: string): Promise<OperationsState>;
   registerPayment(input: {

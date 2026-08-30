@@ -72,6 +72,7 @@
   color: #fff;
   font-weight: 800;
 }
+.staff-auth__brand > img { width: 44px; height: 44px; object-fit: contain; }
 .staff-auth__brand strong { display: grid; line-height: 1.05; }
 .staff-auth__brand small { margin-top: 5px; color: #758078; font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .12em; }
 .staff-auth__eyebrow { margin: 0 0 8px; color: #9a673b; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .16em; }
@@ -630,6 +631,7 @@ a.contact-card:hover { transform: translateY(-5px); }
 }
 .admin-brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 25px; border-bottom: 1px solid rgba(255,255,255,.12); }
 .admin-brand > span { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid rgba(255,255,255,.55); border-radius: 50%; font-family: var(--font-display); font-size: .75rem; }
+.admin-brand__mark { width: 42px; height: 42px; flex: 0 0 auto; object-fit: contain; }
 .admin-brand strong { display: flex; flex-direction: column; font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; line-height: 1.15; }
 .admin-brand small { margin-top: 4px; color: rgba(255,255,255,.48); font-family: var(--font-body); font-size: .58rem; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }
 .admin-nav { display: flex; flex: 1; flex-direction: column; gap: 5px; padding-top: 25px; }
@@ -972,6 +974,46 @@ a.contact-card:hover { transform: translateY(-5px); }
 .admin-notice span { font-size: .7rem; line-height: 1.45; }
 .admin-form-error, .admin-form-success { margin-bottom: 16px; border-radius: 7px; }
 .admin-form-success { padding: 11px 13px; border-left: 3px solid #2f7a46; background: #e2f2e6; color: #255f37; font-size: .72rem; }
+.admin-form-success button { border: 0; background: transparent; color: inherit; font: inherit; font-weight: 800; text-decoration: underline; cursor: pointer; }
+.admin-filter-bar { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--admin-panel); }
+.admin-filter-bar label, .admin-directory-search, .admin-search-field, .admin-calendar-start, .admin-guest-picker > label { display: grid; gap: 7px; color: var(--admin-muted); font-size: .65rem; font-weight: 800; letter-spacing: .04em; }
+.admin-filter-bar input, .admin-filter-bar select, .admin-directory-search input, .admin-search-field input, .admin-calendar-start input, .admin-guest-picker input { min-width: 0; padding: 10px 11px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--admin-ink); font: inherit; }
+.admin-directory-search { max-width: 620px; margin-bottom: 18px; }
+.admin-guest-picker { position: relative; margin-bottom: 18px; }
+.admin-guest-picker__results { display: grid; max-height: 270px; margin: 8px 0 14px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; background: #fff; box-shadow: 0 12px 30px rgb(20 33 31 / 8%); }
+.admin-guest-picker__results button { display: grid; gap: 3px; padding: 12px 14px; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--admin-ink); text-align: left; cursor: pointer; }
+.admin-guest-picker__results button:hover, .admin-guest-picker__results button:focus-visible { background: #f3f6f1; outline: 2px solid var(--sage); outline-offset: -2px; }
+.admin-guest-picker__results span, .admin-guest-picker__results p { color: var(--admin-muted); font-size: .68rem; }
+.admin-guest-picker__results p { margin: 0; padding: 14px; }
+.admin-selected-record { margin: 12px 0 20px; padding: 10px 12px; border-radius: 8px; background: #f1f5ee; font-size: .72rem; }
+.admin-guest-editor { margin-top: 17px; border-top: 1px solid var(--line); }
+.admin-guest-editor summary { padding: 14px 0 4px; color: var(--clay-dark); font-size: .68rem; font-weight: 850; cursor: pointer; }
+.admin-guest-editor form { padding-top: 12px; }
+.admin-cancel-box { margin-top: 24px; padding-top: 20px; border-top: 1px solid rgb(255 255 255 / 16%); }
+.admin-cancel-box p, .admin-cancel-box label { color: rgb(255 255 255 / 70%); font-size: .68rem; }
+.admin-cancel-box label { display: grid; gap: 7px; }
+.admin-cancel-box textarea { width: 100%; padding: 10px; border: 1px solid rgb(255 255 255 / 25%); border-radius: 8px; background: rgb(255 255 255 / 8%); color: #fff; resize: vertical; }
+.admin-cancel-box button { width: 100%; margin-top: 10px; padding: 10px; border: 1px solid #e9a39c; border-radius: 8px; background: transparent; color: #ffd9d5; font-weight: 800; cursor: pointer; }
+.admin-cancel-box button:disabled { opacity: .45; cursor: not-allowed; }
+.admin-calendar-start { width: min(220px, 100%); margin-bottom: 16px; }
+.admin-calendar { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: var(--admin-panel); }
+.admin-calendar__grid { display: grid; min-width: 1320px; }
+.admin-calendar__corner, .admin-calendar__day, .admin-calendar__room, .admin-calendar__cell { min-height: 68px; padding: 10px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.admin-calendar__corner, .admin-calendar__day { position: sticky; top: 0; z-index: 2; background: #eef2eb; }
+.admin-calendar__corner { left: 0; z-index: 3; font-size: .68rem; font-weight: 850; }
+.admin-calendar__day { display: grid; place-content: center; text-align: center; text-transform: capitalize; }
+.admin-calendar__day strong { font-size: .66rem; }
+.admin-calendar__day span { color: var(--admin-muted); font-size: .62rem; }
+.admin-calendar__row { display: grid; }
+.admin-calendar__room { position: sticky; left: 0; z-index: 1; display: grid; align-content: center; background: var(--admin-panel); }
+.admin-calendar__room strong { font-size: .72rem; }
+.admin-calendar__room span, .admin-calendar__cell > span { color: var(--admin-muted); font-size: .6rem; }
+.admin-calendar__cell { display: grid; place-content: center; background: #fbfcfa; text-align: center; }
+.admin-calendar__cell--occupied { background: #e4eee2; }
+.admin-calendar__cell a { display: grid; gap: 2px; color: #244c32; text-decoration: none; }
+.admin-calendar__cell a strong { font-size: .65rem; }
+.admin-calendar__cell a span { font-size: .57rem; }
+.admin-calendar-mobile { display: none; }
 .admin-media-upload > form > fieldset { display: grid; grid-template-columns: minmax(230px, .62fr) minmax(0, 1.38fr); gap: 28px; min-width: 0; padding: 0; border: 0; margin: 0; }
 .admin-media-upload fieldset:disabled { opacity: .62; }
 .admin-media-upload__preview { display: flex; min-width: 0; flex-direction: column; gap: 12px; }
@@ -1056,6 +1098,7 @@ a.contact-card:hover { transform: translateY(-5px); }
   .admin-service-rooms { grid-template-columns: 1fr; }
   .admin-media-upload > form > fieldset { grid-template-columns: 1fr; }
   .admin-media-upload__preview { max-width: 420px; }
+  .admin-filter-bar { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 620px) {
@@ -1122,4 +1165,11 @@ a.contact-card:hover { transform: translateY(-5px); }
   .admin-setup-progress ol { grid-template-columns: 1fr 1fr; }
   .admin-schema-notice { flex-direction: column; }
   .admin-service-room fieldset { grid-template-columns: 1fr; }
+  .admin-filter-bar { grid-template-columns: 1fr; padding: 14px; }
+  .admin-calendar { display: none; }
+  .admin-calendar-mobile { display: grid; gap: 12px; }
+  .admin-calendar-mobile section { padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--admin-panel); }
+  .admin-calendar-mobile h2 { margin: 0 0 10px; font-family: var(--font-display); font-size: 1.15rem; }
+  .admin-calendar-mobile a { display: grid; gap: 3px; padding: 10px 0; border-top: 1px solid var(--line); color: inherit; text-decoration: none; }
+  .admin-calendar-mobile a span, .admin-calendar-mobile p { color: var(--admin-muted); font-size: .66rem; }
 }

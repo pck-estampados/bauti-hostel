@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState, type FormEvent } from "react";
 import { createSupabaseBrowserClient } from "@/app/lib/supabase/client";
+import { brand } from "@/app/lib/brand";
 
 function StaffLoginForm() {
   const searchParams = useSearchParams();
@@ -41,7 +43,7 @@ function StaffLoginForm() {
   return (
     <main className="staff-auth">
       <section className="staff-auth__card" aria-labelledby="staff-login-title">
-        <Link className="staff-auth__brand" href="/"><span>HB</span><strong>Hostel Bauti<small>Administración</small></strong></Link>
+        <Link className="staff-auth__brand" href="/" aria-label={`${brand.publicName}, inicio`}><Image src={brand.assets.isotipo} alt="" width={44} height={44} /><strong>{brand.publicName}<small>Administración</small></strong></Link>
         <p className="staff-auth__eyebrow">Acceso privado</p>
         <h1 id="staff-login-title">Ingresar al panel</h1>
         <p>Usá la cuenta de empleado que fue creada por un administrador.</p>

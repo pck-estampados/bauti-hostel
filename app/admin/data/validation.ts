@@ -14,6 +14,7 @@ const guestFields = {
 
 export const uuidSchema = z.string().uuid();
 export const guestInputSchema = z.object(guestFields).strict();
+export const guestUpdateInputSchema = guestInputSchema.extend({ guestId: uuidSchema }).strict();
 
 const stayFields = {
   guestCount: z.number().int().min(1).max(30),
@@ -39,11 +40,35 @@ export const reservationInputSchema = z
   .object({
     ...guestFields,
     ...stayFields,
+    guestId: uuidSchema.optional(),
     source: z.enum(["phone", "whatsapp", "instagram", "web", "booking", "airbnb", "referral", "other"]),
     expectedArrival: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional().or(z.literal("")),
+    externalReference: optionalText(200),
   })
   .strict()
   .refine(datesAreOrdered, { message: "La salida debe ser posterior al ingreso.", path: ["checkOut"] });
+
+export const reservationUpdateInputSchema = z
+  .object({
+    reservationId: uuidSchema,
+    guestId: uuidSchema,
+    roomId: uuidSchema,
+    guestCount: z.number().int().min(1).max(30),
+    checkIn: isoDate,
+    checkOut: isoDate,
+    nightlyRate: z.number().finite().positive().max(100_000_000),
+    source: z.enum(["phone", "whatsapp", "instagram", "web", "booking", "airbnb", "referral", "other"]),
+    expectedArrival: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional().or(z.literal("")),
+    externalReference: optionalText(200),
+    notes: optionalText(4000),
+  })
+  .strict()
+  .refine(datesAreOrdered, { message: "La salida debe ser posterior al ingreso.", path: ["checkOut"] });
+
+export const cancelReservationInputSchema = z.object({
+  reservationId: uuidSchema,
+  reason: z.string().trim().min(2).max(500),
+}).strict();
 
 export const paymentInputSchema = z.object({
   reservationId: uuidSchema,

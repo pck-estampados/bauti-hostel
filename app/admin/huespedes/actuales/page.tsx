@@ -1,20 +1,41 @@
 "use client";
 
+import { useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useOperations } from "../../components/operations-provider";
-import { AdminPageHeader, EmptyState, formatCurrency, formatDate, StatusPill } from "../../components/ui";
-import { dashboardSnapshot, formatGuestName, nightsBetween } from "../../lib/operations";
+import { AdminPageHeader, EmptyState, formatDate, StatusPill } from "../../components/ui";
+import { findPotentialGuestMatches } from "../../data/reservation-management-core";
+import { formatGuestName } from "../../lib/operations";
+import type { Guest } from "../../lib/types";
 
-export default function CurrentGuestsPage() {
-  const { state } = useOperations();
-  const active = dashboardSnapshot(state).active;
+function GuestEditor({ guest, save }: { guest: Guest; save: (guestId: string, input: Omit<Guest, "id" | "createdAt" | "isDemo">) => Promise<void> }) {
+  const [form, setForm] = useState({ firstName: guest.firstName, lastName: guest.lastName, phone: guest.phone, email: guest.email ?? "", document: guest.document ?? "" });
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setError(""); setMessage("");
+    try { await save(guest.id, form); setMessage("Datos actualizados."); }
+    catch (caught) { setError(caught instanceof Error ? caught.message : "No fue posible actualizar."); }
+  }
+  return <details className="admin-guest-editor"><summary>Editar datos básicos</summary><form onSubmit={submit}><div className="admin-field-grid"><label>Nombre<input required value={form.firstName} onChange={(event) => setForm({ ...form, firstName: event.target.value })} /></label><label>Apellido<input required value={form.lastName} onChange={(event) => setForm({ ...form, lastName: event.target.value })} /></label><label>Teléfono<input required type="tel" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></label><label>Email <small>opcional</small><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label><label>Documento <small>opcional</small><input value={form.document} onChange={(event) => setForm({ ...form, document: event.target.value })} /></label></div>{error ? <p className="admin-form-error" role="alert">{error}</p> : null}{message ? <p className="admin-form-success" role="status">{message}</p> : null}<button className="admin-button admin-button--secondary" type="submit">Guardar cambios</button></form></details>;
+}
+
+export default function GuestsPage() {
+  const { state, updateGuest } = useOperations();
+  const [search, setSearch] = useState("");
+  const guests = useMemo(() => findPotentialGuestMatches(state, search), [search, state]);
+  const activeReservationByGuest = new Map(
+    state.reservations.filter((reservation) => reservation.status === "accommodated").map((reservation) => [reservation.primaryGuestId, reservation]),
+  );
   return (
     <>
-      <AdminPageHeader eyebrow="Recepción" title="Huéspedes alojados actualmente" description="Estadías activas, datos de contacto, fechas y saldos del entorno de prueba." actions={<Link className="admin-button admin-button--primary" href="/admin/walk-in">Registrar ingreso</Link>} />
-      {active.length ? <div className="admin-guest-grid">{active.map((reservation) => {
-        const guest = state.guests.find((item) => item.id === reservation.primaryGuestId); const room = state.rooms.find((item) => item.id === reservation.roomId); if (!guest) return null;
-        return <article className="admin-guest-card" key={reservation.id}><div className="admin-guest-card__identity"><span>{guest.firstName.slice(0,1)}</span><div><h2>{formatGuestName(guest.firstName, guest.lastName)}</h2><a href={`tel:${guest.phone}`}>{guest.phone}</a></div></div><dl><div><dt>Habitación</dt><dd>{room?.displayName ?? "Sin asignar"}</dd></div><div><dt>Estadía</dt><dd>{formatDate(reservation.checkIn)} → {formatDate(reservation.checkOut)}</dd></div><div><dt>Noches</dt><dd>{nightsBetween(reservation.checkIn, reservation.checkOut)}</dd></div><div><dt>Personas</dt><dd>{reservation.guestCount}</dd></div><div><dt>Saldo</dt><dd>{formatCurrency(reservation.balance)}</dd></div></dl><StatusPill status={reservation.paymentStatus}>{reservation.balance ? "Pago pendiente" : "Pagado"}</StatusPill><div className="admin-card-actions"><Link href={`/admin/pagos/nuevo?reservation=${reservation.id}`}>Registrar pago</Link><Link href={`/admin/check-out?reservation=${reservation.id}`}>Hacer check-out</Link></div></article>;
-      })}</div> : <EmptyState title="No hay huéspedes alojados" description="Los ingresos confirmados aparecerán aquí automáticamente." action={{ href: "/admin/walk-in", label: "Registrar ingreso" }} />}
+      <AdminPageHeader eyebrow="Base de huéspedes" title="Huéspedes" description="Buscá fichas reales por nombre, teléfono o email y actualizá sólo sus datos básicos." actions={<Link className="admin-button admin-button--primary" href="/admin/huespedes/nuevo">Nuevo huésped</Link>} />
+      <label className="admin-directory-search">Buscar huésped<input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nombre, teléfono o email" /></label>
+      {!state.guests.length ? <div className="admin-list-panel"><EmptyState title="No hay huéspedes cargados" description="La base está vacía. Podés crear una ficha o hacerlo durante una reserva." action={{ href: "/admin/huespedes/nuevo", label: "Nuevo huésped" }} /></div> : !guests.length ? <div className="admin-list-panel"><EmptyState title="Sin coincidencias" description="Probá con otro nombre, teléfono o correo." /></div> : <div className="admin-guest-grid">{guests.map((guest) => {
+        const activeReservation = activeReservationByGuest.get(guest.id);
+        const room = state.rooms.find((item) => item.id === activeReservation?.roomId);
+        return <article className="admin-guest-card" key={guest.id}><div className="admin-guest-card__identity"><span>{guest.firstName.slice(0, 1)}</span><div><h2>{formatGuestName(guest.firstName, guest.lastName)}</h2><a href={`tel:${guest.phone}`}>{guest.phone}</a>{guest.email ? <a href={`mailto:${guest.email}`}>{guest.email}</a> : null}</div></div><dl><div><dt>Creado</dt><dd>{formatDate(guest.createdAt)}</dd></div><div><dt>Estado</dt><dd>{activeReservation ? "Alojado" : "Sin estadía activa"}</dd></div>{activeReservation ? <div><dt>Habitación</dt><dd>{room?.displayName ?? "Sin asignar"}</dd></div> : null}</dl>{activeReservation ? <StatusPill status="accommodated">Alojado</StatusPill> : null}<GuestEditor guest={guest} save={updateGuest} /></article>;
+      })}</div>}
     </>
   );
 }

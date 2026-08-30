@@ -5,12 +5,15 @@ import { createDemoOperationsState, DEMO_OPERATOR } from "../lib/demo-data";
 import {
   addGuest,
   addInternalNote,
+  cancelReservation,
   createManualReservation,
   createWalkIn,
   performCheckIn,
   performCheckOut,
   registerPayment,
   setRoomStatus,
+  updateGuest,
+  updateReservation,
 } from "../lib/operations";
 import type {
   InternalNote,
@@ -18,6 +21,7 @@ import type {
   OperationsState,
   PaymentMethod,
   RoomStatus,
+  ReservationUpdateInput,
   WalkInInput,
 } from "../lib/types";
 
@@ -31,8 +35,11 @@ type OperationsContextValue = {
   mode: AppMode;
   resetDemo: () => void;
   addGuest: (input: GuestInput) => Promise<void>;
+  updateGuest: (guestId: string, input: GuestInput) => Promise<void>;
   addWalkIn: (input: WalkInInput) => Promise<void>;
   addReservation: (input: ManualReservationInput) => Promise<void>;
+  updateReservation: (input: ReservationUpdateInput) => Promise<void>;
+  cancelReservation: (reservationId: string, reason: string) => Promise<void>;
   checkIn: (reservationId: string) => Promise<void>;
   checkOut: (reservationId: string) => Promise<void>;
   addPayment: (input: { reservationId: string; amount: number; method: PaymentMethod; reference?: string; note?: string }) => Promise<void>;
@@ -84,8 +91,11 @@ export function OperationsProvider({
     mode,
     resetDemo: () => { if (mode === "demo") setState(createDemoOperationsState()); },
     addGuest: (input) => execute("addGuest", input, (previous) => addGuest(previous, input, actor)),
+    updateGuest: (guestId, input) => execute("updateGuest", { guestId, ...input }, (previous) => updateGuest(previous, guestId, input, actor)),
     addWalkIn: (input) => execute("createWalkIn", input, (previous) => createWalkIn(previous, input, actor)),
     addReservation: (input) => execute("createReservation", input, (previous) => createManualReservation(previous, input, actor)),
+    updateReservation: (input) => execute("updateReservation", input, (previous) => updateReservation(previous, input, actor)),
+    cancelReservation: (reservationId, reason) => execute("cancelReservation", { reservationId, reason }, (previous) => cancelReservation(previous, reservationId, reason, actor)),
     checkIn: (reservationId) => execute("checkIn", { reservationId }, (previous) => performCheckIn(previous, reservationId, actor)),
     checkOut: (reservationId) => execute("checkOut", { reservationId }, (previous) => performCheckOut(previous, reservationId, actor)),
     addPayment: (input) => execute("registerPayment", input, (previous) => registerPayment(previous, input, actor)),

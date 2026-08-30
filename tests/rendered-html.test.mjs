@@ -208,7 +208,7 @@ test("server-renders the complete configuration experience without enabling writ
   const response = await render("/admin/configuracion");
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.match(html, /Avance del Hostel Bauti/);
+  assert.match(html, /Avance de Casa Albor/);
   assert.match(html, /Configuraci.n terminada/);
   assert.match(html, /Tipos de habitaci.n/);
   assert.match(html, /Camas y capacidades/);

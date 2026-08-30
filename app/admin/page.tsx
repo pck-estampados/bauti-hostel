@@ -14,11 +14,11 @@ export default function AdminDashboardPage() {
 
   const metrics = [
     { label: "Huéspedes alojados", value: snapshot.currentGuests, tone: "ink" },
-    { label: "Check-ins pendientes", value: snapshot.arrivals.length, tone: "clay" },
-    { label: "Check-outs de hoy", value: snapshot.departures.length, tone: "sand" },
+    { label: "Llegadas de hoy", value: snapshot.arrivals.length, tone: "clay" },
+    { label: "Salidas de hoy", value: snapshot.departures.length, tone: "sand" },
     { label: "Habitaciones ocupadas", value: snapshot.occupiedRooms, tone: "sage" },
     { label: "Habitaciones libres", value: snapshot.freeRooms, tone: "green" },
-    { label: "Saldos por cobrar", value: formatCurrency(snapshot.pendingBalanceTotal), tone: "money" },
+    { label: "Reservas pendientes", value: snapshot.pendingReservations, tone: "money" },
   ];
 
   return (

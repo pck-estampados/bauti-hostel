@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useOperations } from "./operations-provider";
+import { brand } from "@/app/lib/brand";
 
 const navigation = [
   { href: "/admin", label: "Resumen", code: "HO" },
   { href: "/admin/habitaciones", label: "Habitaciones", code: "HA" },
   { href: "/admin/huespedes/actuales", label: "Huéspedes alojados", code: "HU" },
   { href: "/admin/reservas", label: "Reservas", code: "RE" },
+  { href: "/admin/calendario", label: "Calendario", code: "CA" },
   { href: "/admin/pagos/pendientes", label: "Pagos y saldos", code: "PA" },
   { href: "/admin/notas", label: "Notas internas", code: "NO" },
   { href: "/admin/galeria", label: "Galería", code: "GA" },
@@ -48,9 +51,9 @@ export function AdminShell({
   return (
     <div className="admin-app">
       <aside className="admin-sidebar">
-        <Link className="admin-brand" href="/admin" aria-label="Hostel Bauti, administración">
-          <span>HB</span>
-          <strong>Hostel Bauti<small>Administración</small></strong>
+        <Link className="admin-brand" href="/admin" aria-label={`${brand.publicName}, administración`}>
+          <Image className="admin-brand__mark" src={brand.assets.isotipoCream} alt="" width={52} height={52} />
+          <strong>{brand.publicName}<small>Administración</small></strong>
         </Link>
         <AdminNavigation />
         <div className="admin-sidebar__bottom">

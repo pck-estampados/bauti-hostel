@@ -5,9 +5,11 @@ import type {
   OperationsState,
   PaymentMethod,
   Reservation,
+  ReservationUpdateInput,
   RoomStatus,
   WalkInInput,
 } from "./types";
+import { availableRoomsForStay } from "../data/reservation-management-core";
 
 export function nightsBetween(checkIn: string, checkOut: string): number {
   const start = Date.parse(`${checkIn}T12:00:00Z`);
@@ -80,24 +82,25 @@ export function createWalkIn(state: OperationsState, input: WalkInInput, actor =
 
 export function createManualReservation(state: OperationsState, input: ManualReservationInput, actor = DEMO_OPERATOR): OperationsState {
   validateStay(input);
-  const room = state.rooms.find((item) => item.id === input.roomId);
-  if (!room || !isRoomOperationallyAvailable(room.status)) throw new Error("La habitación seleccionada no está operativamente disponible.");
-  if (input.guestCount > room.capacity) throw new Error("La cantidad de huéspedes supera la capacidad configurada.");
+  const room = availableRoomsForStay(state, input).find((item) => item.id === input.roomId);
+  if (!room) throw new Error("La habitación seleccionada no está disponible para esas fechas y capacidad.");
   const total = nightsBetween(input.checkIn, input.checkOut) * input.nightlyRate;
   const paid = Math.min(Math.max(input.amountPaid, 0), total);
   const createdAt = nowIso();
-  const guestId = id("guest");
+  const selectedGuest = input.guestId ? state.guests.find((guest) => guest.id === input.guestId) : undefined;
+  if (input.guestId && !selectedGuest) throw new Error("No se encontró el huésped seleccionado.");
+  const guestId = selectedGuest?.id ?? id("guest");
   const reservationId = id("reservation");
 
   return {
     ...state,
     rooms: state.rooms.map((item) => item.id === room.id ? { ...item, status: "reserved" } : item),
-    guests: [{ id: guestId, firstName: input.firstName.trim(), lastName: input.lastName.trim(), phone: input.phone.trim(), document: input.document?.trim() || undefined, createdAt, isDemo: true }, ...state.guests],
+    guests: selectedGuest ? state.guests : [{ id: guestId, firstName: input.firstName.trim(), lastName: input.lastName.trim(), phone: input.phone.trim(), document: input.document?.trim() || undefined, email: input.email?.trim() || undefined, createdAt, isDemo: true }, ...state.guests],
     reservations: [{
       id: reservationId, code: `RES-${Date.now().toString().slice(-6)}`, primaryGuestId: guestId, roomId: room.id,
       guestCount: input.guestCount, checkIn: input.checkIn, checkOut: input.checkOut, expectedArrival: input.expectedArrival,
       nightlyRate: input.nightlyRate, total, paid, balance: Math.max(total - paid, 0), status: "confirmed",
-      paymentStatus: paymentStatus(total, paid), source: input.source, notes: input.notes?.trim() || undefined,
+      paymentStatus: paymentStatus(total, paid), source: input.source, externalReference: input.externalReference?.trim() || undefined, notes: input.notes?.trim() || undefined,
       createdAt, createdBy: actor, isDemo: true,
     }, ...state.reservations],
     payments: paid > 0 ? [{ id: id("payment"), reservationId, guestId, amount: paid, currency: "ARS", method: input.paymentMethod, createdAt, createdBy: actor, isDemo: true }, ...state.payments] : state.payments,
@@ -114,6 +117,100 @@ export function addGuest(state: OperationsState, input: { firstName: string; las
     ...state,
     guests: [{ id: guestId, firstName: input.firstName.trim(), lastName: input.lastName.trim(), phone: input.phone.trim(), document: input.document?.trim() || undefined, email: input.email?.trim() || undefined, createdAt, isDemo: true }, ...state.guests],
     audit: [{ id: id("audit"), action: "guest.created", entityType: "guest", entityId: guestId, actor, createdAt, summary: `Huésped de prueba registrado: ${formatGuestName(input.firstName, input.lastName)}.`, isDemo: true }, ...state.audit],
+  };
+}
+
+export function updateGuest(
+  state: OperationsState,
+  guestId: string,
+  input: { firstName: string; lastName: string; phone: string; document?: string; email?: string },
+  actor = DEMO_OPERATOR,
+): OperationsState {
+  const guest = state.guests.find((item) => item.id === guestId);
+  if (!guest) throw new Error("No se encontró el huésped.");
+  if (!input.firstName.trim() || !input.lastName.trim() || input.phone.trim().length < 6) {
+    throw new Error("Revisá los datos básicos del huésped.");
+  }
+  const createdAt = nowIso();
+  return {
+    ...state,
+    guests: state.guests.map((item) => item.id === guestId ? {
+      ...item,
+      firstName: input.firstName.trim(),
+      lastName: input.lastName.trim(),
+      phone: input.phone.trim(),
+      document: input.document?.trim() || undefined,
+      email: input.email?.trim().toLocaleLowerCase("es-AR") || undefined,
+    } : item),
+    audit: [{ id: id("audit"), action: "guest.updated", entityType: "guest", entityId: guestId, actor, createdAt, summary: "Datos básicos de huésped actualizados.", isDemo: true }, ...state.audit],
+  };
+}
+
+export function updateReservation(
+  state: OperationsState,
+  input: ReservationUpdateInput,
+  actor = DEMO_OPERATOR,
+): OperationsState {
+  validateStay(input);
+  const reservation = state.reservations.find((item) => item.id === input.reservationId);
+  if (!reservation) throw new Error("No se encontró la reserva.");
+  if (!["inquiry", "pending", "pending_deposit", "confirmed", "partially_paid", "paid"].includes(reservation.status)) {
+    throw new Error("El estado actual de la reserva no permite editarla.");
+  }
+  if (!state.guests.some((guest) => guest.id === input.guestId)) throw new Error("No se encontró el huésped.");
+  const room = availableRoomsForStay(state, {
+    checkIn: input.checkIn,
+    checkOut: input.checkOut,
+    guestCount: input.guestCount,
+    excludeReservationId: reservation.id,
+  }).find((item) => item.id === input.roomId);
+  if (!room) throw new Error("La habitación ya no está disponible para esas fechas.");
+  const total = nightsBetween(input.checkIn, input.checkOut) * input.nightlyRate;
+  if (reservation.paid > total) throw new Error("El nuevo total no puede ser menor que el monto ya pagado.");
+  const createdAt = nowIso();
+  return {
+    ...state,
+    reservations: state.reservations.map((item) => item.id === reservation.id ? {
+      ...item,
+      primaryGuestId: input.guestId,
+      roomId: input.roomId,
+      guestCount: input.guestCount,
+      checkIn: input.checkIn,
+      checkOut: input.checkOut,
+      nightlyRate: input.nightlyRate,
+      total,
+      balance: Math.max(total - item.paid, 0),
+      paymentStatus: paymentStatus(total, item.paid),
+      source: input.source,
+      expectedArrival: input.expectedArrival || undefined,
+      externalReference: input.externalReference?.trim() || undefined,
+      notes: input.notes?.trim() || undefined,
+    } : item),
+    audit: [{ id: id("audit"), action: "reservation.updated", entityType: "reservation", entityId: reservation.id, actor, createdAt, summary: "Reserva actualizada.", isDemo: true }, ...state.audit],
+  };
+}
+
+export function cancelReservation(
+  state: OperationsState,
+  reservationId: string,
+  reason: string,
+  actor = DEMO_OPERATOR,
+): OperationsState {
+  const reservation = state.reservations.find((item) => item.id === reservationId);
+  if (!reservation) throw new Error("No se encontró la reserva.");
+  if (["checked_in", "accommodated", "checked_out", "completed"].includes(reservation.status)) {
+    throw new Error("La estadía ya iniciada o finalizada no puede cancelarse.");
+  }
+  if (reason.trim().length < 2) throw new Error("Indicá un motivo de cancelación.");
+  const createdAt = nowIso();
+  return {
+    ...state,
+    reservations: state.reservations.map((item) => item.id === reservationId ? {
+      ...item,
+      status: "cancelled",
+      roomId: undefined,
+    } : item),
+    audit: [{ id: id("audit"), action: "reservation.cancelled", entityType: "reservation", entityId: reservationId, actor, createdAt, summary: "Reserva cancelada.", isDemo: true }, ...state.audit],
   };
 }
 
@@ -203,5 +300,6 @@ export function dashboardSnapshot(state: OperationsState) {
     maintenanceRooms: state.rooms.filter((item) => item.status === "maintenance").length,
     openIssues: state.issues.filter((item) => !["resolved", "closed"].includes(item.status)).length,
     pendingBalanceTotal: pendingBalances.reduce((sum, item) => sum + item.balance, 0),
+    pendingReservations: state.reservations.filter((item) => ["inquiry", "pending", "pending_deposit"].includes(item.status)).length,
   };
 }

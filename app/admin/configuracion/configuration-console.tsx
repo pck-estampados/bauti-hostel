@@ -290,7 +290,7 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
       </section>
 
       <section className="admin-setup-progress" aria-labelledby="setup-progress-title">
-        <div><p>Configuración inicial</p><h2 id="setup-progress-title">Avance del Hostel Bauti</h2><span>La operación queda bloqueada hasta contar con inventario, capacidad, horarios y políticas válidas.</span></div>
+        <div><p>Configuración inicial</p><h2 id="setup-progress-title">Avance de Casa Albor</h2><span>La operación queda bloqueada hasta contar con inventario, capacidad, horarios y políticas válidas.</span></div>
         <ol>
           {progress.map((step, index) => <li className={`admin-progress-step admin-progress-step--${step.status}`} key={step.label}><span>{String(index + 1).padStart(2, "0")}</span><strong>{step.label}</strong><small>{progressStatusLabels[step.status]}</small></li>)}
           <li className={`admin-progress-step admin-progress-step--${setupComplete ? "configured" : "pending"}`}><span>07</span><strong>Configuración terminada</strong><small>{setupComplete ? "Configurado" : "Pendiente"}</small></li>
@@ -315,10 +315,10 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
       </nav>
 
       <section className="admin-config-section" id="general">
-        <SectionHeading eyebrow="Identidad y contacto" title="Información general" description="Datos operativos del Hostel Bauti. El sitio público consume únicamente los campos permitidos mediante su contrato de lectura." status={<SavedState saved={Boolean(general)} />} />
+        <SectionHeading eyebrow="Identidad y contacto" title="Información general" description="Datos operativos de Casa Albor. El sitio público consume únicamente los campos permitidos mediante su contrato de lectura." status={<SavedState saved={Boolean(general)} />} />
         <form className="admin-config-card" key={state.settings.general?.updatedAt ?? "general-empty"} onSubmit={submitGeneral}>
           <div className="admin-field-grid">
-            <label>Nombre comercial<input defaultValue={general?.name ?? "Hostel Bauti"} name="name" required /></label>
+            <label>Nombre comercial<input defaultValue={general?.name ?? "Casa Albor"} name="name" required /></label>
             <label>Teléfono<input defaultValue={general?.phone ?? ""} name="phone" /></label>
             <label>WhatsApp<input defaultValue={general?.whatsapp ?? ""} name="whatsapp" /></label>
             <label>Correo de contacto<input defaultValue={general?.email ?? ""} name="email" type="email" /></label>
@@ -412,7 +412,7 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
 
       <section className="admin-config-section" id="habitaciones">
         <SectionHeading eyebrow="Inventario físico" title="Habitaciones" description="Cada habitación nueva queda fuera de servicio hasta que recepción la habilite desde la vista operativa." status={<span className="admin-config-state">{state.rooms.length} configuradas</span>} />
-        {!state.rooms.length ? <EmptyState title="Todavía no hay habitaciones" description="El inventario productivo está vacío. Creá únicamente las habitaciones reales del Hostel Bauti." /> : (
+        {!state.rooms.length ? <EmptyState title="Todavía no hay habitaciones" description="El inventario productivo está vacío. Creá únicamente las habitaciones reales de Casa Albor." /> : (
           <div className="admin-config-records admin-config-records--grid">
             {state.rooms.map((room) => (
               <details className="admin-config-record" key={room.id}>

@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import type {
+  ManagedBed,
   ManagedRoom,
   ManagedRoomType,
   RoomManagementSnapshot,
@@ -41,6 +42,14 @@ const roomStatusOptions: ManagedRoom["status"][] = [
   "out_of_service",
 ];
 
+const bedTypeLabels: Record<ManagedBed["bedType"], string> = {
+  single: "Individual",
+  double: "Doble",
+  bunk_single: "Cucheta individual",
+  crib: "Cuna",
+  other: "Otra",
+};
+
 function formValue(form: FormData, name: string) {
   return String(form.get(name) ?? "").trim();
 }
@@ -75,6 +84,54 @@ function roomTypePayload(form: FormData) {
     baseRate: Number(formValue(form, "baseRate")),
     active: form.has("active"),
   };
+}
+
+function bedPayload(form: FormData) {
+  return {
+    code: formValue(form, "code"),
+    bedType: formValue(form, "bedType"),
+    quantity: Number(formValue(form, "quantity")),
+    capacity: Number(formValue(form, "capacity")),
+    active: form.has("active"),
+  };
+}
+
+function BedFields({ bed }: { bed?: ManagedBed }) {
+  return (
+    <div className="admin-field-grid admin-field-grid--compact">
+      <label>
+        Código
+        <input defaultValue={bed?.code ?? ""} maxLength={40} name="code" required />
+      </label>
+      <label>
+        Tipo de cama
+        <select defaultValue={bed?.bedType ?? "single"} name="bedType" required>
+          {Object.entries(bedTypeLabels).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Cantidad
+        <input defaultValue={bed?.quantity ?? 1} max={30} min={1} name="quantity" required type="number" />
+      </label>
+      <label>
+        Personas por cama
+        <input defaultValue={bed?.capacity ?? 1} max={4} min={1} name="capacity" required type="number" />
+      </label>
+      {bed?.active ? (
+        <div className="admin-check-field admin-check-field--locked">
+          <input name="active" type="hidden" value="on" />
+          Activa. Usá “Desactivar” para darla de baja.
+        </div>
+      ) : (
+        <label className="admin-check-field">
+          <input defaultChecked={!bed} name="active" type="checkbox" />
+          {bed ? "Reactivar cama" : "Cama activa"}
+        </label>
+      )}
+    </div>
+  );
 }
 
 function RoomFields({ room, roomTypes }: { room?: ManagedRoom; roomTypes: ManagedRoomType[] }) {
@@ -180,6 +237,11 @@ export function RoomManagementConsole({
     [state.roomTypes],
   );
   const activeRoomTypes = state.roomTypes.filter((item) => item.active);
+  const activeRooms = state.rooms.filter((room) => room.active);
+  const activeBeds = state.beds.filter((bed) => bed.active);
+  const inventoryConfigured = activeRoomTypes.length > 0
+    && activeRooms.length > 0
+    && activeRooms.every((room) => room.bedCapacity >= room.capacity);
 
   async function refresh() {
     const response = await fetch("/api/admin/rooms", { credentials: "same-origin" });
@@ -288,12 +350,74 @@ export function RoomManagementConsole({
     }, "Tipo de habitación actualizado y persistido.");
   }
 
+  function createBed(event: FormEvent<HTMLFormElement>, room: ManagedRoom) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const payload = bedPayload(new FormData(form));
+    void run(`create-bed-${room.id}`, async () => {
+      await readResponse(await fetch(`/api/admin/rooms/${room.id}/beds`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify(payload),
+      }));
+      form.reset();
+    }, "Cama creada y vinculada a la habitación.");
+  }
+
+  function updateBed(
+    event: FormEvent<HTMLFormElement>,
+    room: ManagedRoom,
+    bed: ManagedBed,
+  ) {
+    event.preventDefault();
+    const payload = bedPayload(new FormData(event.currentTarget));
+    void run(`update-bed-${bed.id}`, async () => {
+      await readResponse(await fetch(`/api/admin/rooms/${room.id}/beds/${bed.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify(payload),
+      }));
+    }, "Cama actualizada y persistida.");
+  }
+
+  function deactivateBed(room: ManagedRoom, bed: ManagedBed) {
+    if (!window.confirm(`¿Desactivar la cama “${bed.code}”? No se eliminará su historial.`)) return;
+    void run(`deactivate-bed-${bed.id}`, async () => {
+      await readResponse(await fetch(`/api/admin/rooms/${room.id}/beds/${bed.id}`, {
+        method: "DELETE",
+        credentials: "same-origin",
+      }));
+    }, "Cama desactivada de forma segura.");
+  }
+
+  function assignService(room: ManagedRoom, serviceId: string) {
+    void run(`assign-service-${room.id}-${serviceId}`, async () => {
+      await readResponse(await fetch(`/api/admin/rooms/${room.id}/services`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ serviceId }),
+      }));
+    }, "Servicio asignado a la habitación.");
+  }
+
+  function removeService(room: ManagedRoom, serviceId: string) {
+    void run(`remove-service-${room.id}-${serviceId}`, async () => {
+      await readResponse(await fetch(`/api/admin/rooms/${room.id}/services/${serviceId}`, {
+        method: "DELETE",
+        credentials: "same-origin",
+      }));
+    }, "Servicio retirado de la habitación.");
+  }
+
   return (
     <>
       <AdminPageHeader
         eyebrow="Inventario real"
         title="Habitaciones"
-        description="Creá, editá y desactivá habitaciones reales. Todas las escrituras usan tu sesión y quedan sujetas a RLS."
+        description="Administrá habitaciones, camas y servicios reales. Todas las escrituras usan tu sesión y quedan sujetas a RLS."
         actions={canManageRooms ? (
           <button
             className="admin-button admin-button--primary"
@@ -310,6 +434,19 @@ export function RoomManagementConsole({
       ) : null}
       {error ? <p className="admin-form-error" role="alert">{error}</p> : null}
       {message ? <p className="admin-form-success" role="status">{message}</p> : null}
+
+      {canRead ? (
+        <section className="admin-inventory-summary" aria-label="Estado del inventario de Casa Albor">
+          <div><span>Tipos de habitación</span><strong>{state.roomTypes.length}</strong></div>
+          <div><span>Habitaciones</span><strong>{state.rooms.length}</strong></div>
+          <div><span>Camas activas</span><strong>{activeBeds.reduce((total, bed) => total + bed.quantity, 0)}</strong></div>
+          <div><span>Servicios existentes</span><strong>{state.services.length}</strong></div>
+          <div className="admin-inventory-summary__state">
+            <span>Estado</span>
+            <strong>{inventoryConfigured ? "Inventario configurado" : "Configuración incompleta"}</strong>
+          </div>
+        </section>
+      ) : null}
 
       {showRoomForm ? (
         <section className="admin-room-management-panel" aria-labelledby="create-room-title">
@@ -347,6 +484,19 @@ export function RoomManagementConsole({
             <div className="admin-room-management-grid">
               {state.rooms.map((room) => {
                 const roomType = roomTypeById.get(room.roomTypeId);
+                const roomBeds = state.beds.filter((bed) => bed.roomId === room.id);
+                const activeRoomBeds = roomBeds.filter((bed) => bed.active);
+                const activeBedUnits = activeRoomBeds.reduce(
+                  (total, bed) => total + bed.quantity,
+                  0,
+                );
+                const activeBedCapacity = activeRoomBeds.reduce(
+                  (total, bed) => total + bed.quantity * bed.capacity,
+                  0,
+                );
+                const visibleServices = state.services.filter(
+                  (service) => service.active || room.serviceIds.includes(service.id),
+                );
                 return (
                   <details className="admin-config-record admin-room-management-record" key={room.id}>
                     <summary>
@@ -358,9 +508,16 @@ export function RoomManagementConsole({
                     </summary>
                     <div className="admin-room-management-meta">
                       <StatusPill status={room.status}>{roomStatusLabel(room.status)}</StatusPill>
-                      <span>Camas configuradas: {room.bedCapacity} de {room.capacity}</span>
+                      <span>{activeBedUnits} camas activas · {activeBedCapacity} plazas de {room.capacity}</span>
+                      <span>{room.serviceIds.length} servicios asignados</span>
                       <span>Sector: {room.sector || "Sin informar"}</span>
                     </div>
+                    {activeBedCapacity !== room.capacity ? (
+                      <p className="admin-capacity-warning" role="status">
+                        Capacidad inconsistente: la habitación declara {room.capacity} plazas y las camas activas suman {activeBedCapacity}. Podés guardar, pero revisá el inventario antes de habilitar reservas.
+                      </p>
+                    ) : null}
+                    <h3 className="admin-room-management-subtitle">Estado</h3>
                     <form className="admin-room-status-form" onSubmit={(event) => updateRoomStatus(event, room)}>
                       <label>
                         Estado operativo
@@ -372,7 +529,11 @@ export function RoomManagementConsole({
                         {busy === `status-room-${room.id}` ? "Actualizando…" : "Cambiar estado"}
                       </button>
                     </form>
-                    <form onSubmit={(event) => updateRoom(event, room)}>
+                    <h3 className="admin-room-management-subtitle">Editar</h3>
+                    <form
+                      key={`${room.id}-${room.roomTypeId}-${room.code}-${room.displayName}-${room.capacity}-${room.active}`}
+                      onSubmit={(event) => updateRoom(event, room)}
+                    >
                       <RoomFields room={room} roomTypes={state.roomTypes} />
                       <div className="admin-config-actions">
                         <small>Editar no modifica el estado operativo. Desactivar sí la deja fuera de servicio.</small>
@@ -386,6 +547,114 @@ export function RoomManagementConsole({
                         </div>
                       </div>
                     </form>
+
+                    <details className="admin-room-inventory-section">
+                      <summary>
+                        <strong>Camas</strong>
+                        <span>{activeBedUnits} activas · {activeBedCapacity} plazas</span>
+                      </summary>
+                      <div className="admin-room-inventory-section__body">
+                        {roomBeds.length ? (
+                          <div className="admin-config-records">
+                            {roomBeds.map((bed) => (
+                              <details className="admin-bed-record" key={bed.id}>
+                                <summary>
+                                  <strong>{bed.code}</strong>
+                                  <span>{bed.quantity} × {bedTypeLabels[bed.bedType]} · {bed.capacity} persona{bed.capacity === 1 ? "" : "s"} cada una · {bed.active ? "Activa" : "Inactiva"}</span>
+                                </summary>
+                                <form
+                                  key={`${bed.id}-${bed.code}-${bed.bedType}-${bed.quantity}-${bed.capacity}-${bed.active}`}
+                                  onSubmit={(event) => updateBed(event, room, bed)}
+                                >
+                                  <BedFields bed={bed} />
+                                  <div className="admin-config-actions">
+                                    <small>Editar conserva la asociación con {room.displayName}.</small>
+                                    <div className="admin-room-management-actions">
+                                      {bed.active ? (
+                                        <button
+                                          className="admin-button admin-button--danger"
+                                          disabled={!canManageRoomTypes || busy !== ""}
+                                          onClick={() => deactivateBed(room, bed)}
+                                          type="button"
+                                        >
+                                          Desactivar cama
+                                        </button>
+                                      ) : null}
+                                      <button
+                                        className="admin-button admin-button--primary"
+                                        disabled={!canManageRoomTypes || busy !== ""}
+                                        type="submit"
+                                      >
+                                        {busy === `update-bed-${bed.id}` ? "Guardando…" : "Guardar cama"}
+                                      </button>
+                                    </div>
+                                  </div>
+                                </form>
+                              </details>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="admin-room-management-note">No hay camas cargadas para esta habitación.</p>
+                        )}
+
+                        {canManageRoomTypes ? (
+                          <form className="admin-room-management-panel" onSubmit={(event) => createBed(event, room)}>
+                            <h4>Agregar cama real</h4>
+                            <BedFields />
+                            <div className="admin-config-actions">
+                              <small>No se completará ningún dato automáticamente.</small>
+                              <button
+                                className="admin-button admin-button--primary"
+                                disabled={busy !== ""}
+                                type="submit"
+                              >
+                                {busy === `create-bed-${room.id}` ? "Guardando…" : "Agregar cama"}
+                              </button>
+                            </div>
+                          </form>
+                        ) : null}
+                      </div>
+                    </details>
+
+                    <details className="admin-room-inventory-section">
+                      <summary>
+                        <strong>Servicios</strong>
+                        <span>{room.serviceIds.length} asignados de {state.services.length}</span>
+                      </summary>
+                      <div className="admin-room-inventory-section__body">
+                        {visibleServices.length ? (
+                          <ul className="admin-room-service-list">
+                            {visibleServices.map((service) => {
+                              const assigned = room.serviceIds.includes(service.id);
+                              const actionKey = `${assigned ? "remove" : "assign"}-service-${room.id}-${service.id}`;
+                              return (
+                                <li key={service.id}>
+                                  <div>
+                                    <strong>{service.name}</strong>
+                                    <span>{service.description || service.code}</span>
+                                  </div>
+                                  <div className="admin-room-service-action">
+                                    <span>{assigned ? "Asignado" : service.active ? "Disponible" : "Inactivo"}</span>
+                                    <button
+                                      className={`admin-button ${assigned ? "admin-button--danger" : "admin-button--secondary"}`}
+                                      disabled={!canManageRoomTypes || busy !== "" || (!service.active && !assigned)}
+                                      onClick={() => assigned
+                                        ? removeService(room, service.id)
+                                        : assignService(room, service.id)}
+                                      type="button"
+                                    >
+                                      {busy === actionKey ? "Guardando…" : assigned ? "Quitar" : "Asignar"}
+                                    </button>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        ) : (
+                          <p className="admin-room-management-note">No hay servicios activos disponibles.</p>
+                        )}
+                      </div>
+                    </details>
                   </details>
                 );
               })}
@@ -407,7 +676,7 @@ export function RoomManagementConsole({
               <button className="admin-button admin-button--secondary" onClick={() => setShowTypeForm((visible) => !visible)} type="button">Agregar tipo</button>
             ) : null}
           </div>
-          <p className="admin-room-management-note">El catálogo tiene {state.serviceCount} servicios existentes. Camas y servicios por habitación continúan administrándose desde Configuración.</p>
+          <p className="admin-room-management-note">El catálogo tiene {state.serviceCount} servicios existentes cargados desde Supabase. Esta pantalla sólo permite asignarlos; no crea ni modifica sus definiciones.</p>
 
           {showTypeForm ? (
             <form className="admin-room-management-panel" onSubmit={createRoomType}>
@@ -430,7 +699,10 @@ export function RoomManagementConsole({
                     <div><strong>{roomType.publicName}</strong><span>{roomType.code} · capacidad {roomType.defaultCapacity} · {formatCurrency(roomType.baseRate)}</span></div>
                     <span>{roomType.active ? "Activo" : "Inactivo"}</span>
                   </summary>
-                  <form onSubmit={(event) => updateRoomType(event, roomType)}>
+                  <form
+                    key={`${roomType.id}-${roomType.code}-${roomType.publicName}-${roomType.defaultCapacity}-${roomType.baseRate}-${roomType.active}`}
+                    onSubmit={(event) => updateRoomType(event, roomType)}
+                  >
                     <RoomTypeFields roomType={roomType} />
                     <div className="admin-config-actions">
                       <small>Desmarcar “Tipo activo” aplica una baja lógica; no elimina referencias.</small>

@@ -14,6 +14,7 @@ import {
   setRoomStatus,
   updateGuest,
   updateReservation,
+  voidPayment,
 } from "../lib/operations";
 import type {
   InternalNote,
@@ -44,6 +45,7 @@ type OperationsContextValue = {
   checkIn: (reservationId: string) => Promise<void>;
   checkOut: (reservationId: string) => Promise<void>;
   addPayment: (input: { reservationId: string; amount: number; method: PaymentMethod; reference?: string; note?: string }) => Promise<void>;
+  voidPayment: (paymentId: string, reason: string) => Promise<void>;
   addNote: (input: NoteInput) => Promise<void>;
   changeRoomStatus: (roomId: string, status: RoomStatus, reason?: string) => Promise<void>;
 };
@@ -103,6 +105,7 @@ export function OperationsProvider({
     checkIn: (reservationId) => execute("checkIn", { reservationId }, (previous) => performCheckIn(previous, reservationId, actor)),
     checkOut: (reservationId) => execute("checkOut", { reservationId }, (previous) => performCheckOut(previous, reservationId, actor)),
     addPayment: (input) => execute("registerPayment", input, (previous) => registerPayment(previous, input, actor)),
+    voidPayment: (paymentId, reason) => execute("voidPayment", { paymentId, reason }, (previous) => voidPayment(previous, paymentId, reason, actor)),
     addNote: (input) => execute("addNote", input, (previous) => addInternalNote(previous, input, actor)),
     changeRoomStatus: (roomId, status, reason) => execute("changeRoomStatus", { roomId, status, reason }, (previous) => setRoomStatus(previous, roomId, status, actor)),
   // State updates use React's functional form; state itself is exposed in the context value.

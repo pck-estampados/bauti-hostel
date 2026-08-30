@@ -27,6 +27,8 @@ export type ReservationStatus =
 
 export type PaymentStatus = "pending" | "partial" | "paid" | "refunded" | "rejected";
 export type PaymentMethod = "cash" | "transfer" | "mercado_pago" | "card" | "other";
+export type PaymentDirection = "charge" | "refund";
+export type PaymentRecordStatus = "posted" | "voided";
 export type ReservationSource =
   | "phone"
   | "whatsapp"
@@ -104,6 +106,7 @@ export type Reservation = {
   expectedArrival?: string;
   nightlyRate: number;
   total: number;
+  currency: "ARS";
   paid: number;
   balance: number;
   status: ReservationStatus;
@@ -124,11 +127,17 @@ export type Payment = {
   guestId: string;
   amount: number;
   currency: "ARS";
+  direction: PaymentDirection;
+  status: PaymentRecordStatus;
   method: PaymentMethod;
   reference?: string;
   note?: string;
   createdAt: string;
   createdBy: string;
+  createdByName?: string;
+  voidedAt?: string;
+  voidedBy?: string;
+  voidReason?: string;
   isDemo: boolean;
 };
 

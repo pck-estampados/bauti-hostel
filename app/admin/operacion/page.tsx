@@ -20,7 +20,7 @@ import { formatGuestName } from "../lib/operations";
 import type { RoomStatus } from "../lib/types";
 
 function StayRecord({ reservationId, action }: { reservationId: string; action?: "check-in" | "check-out" }) {
-  const { state } = useOperations();
+  const { state, mode, permissions } = useOperations();
   const reservation = state.reservations.find((item) => item.id === reservationId);
   if (!reservation) return null;
   const guest = state.guests.find((item) => item.id === reservation.primaryGuestId);
@@ -28,13 +28,18 @@ function StayRecord({ reservationId, action }: { reservationId: string; action?:
   const href = action === "check-in"
     ? `/admin/check-in?reservation=${reservation.id}`
     : `/admin/check-out?reservation=${reservation.id}`;
+  const canManagePayments = mode === "demo" || permissions.includes("payments.manage");
+  const paymentHref = `/admin/pagos/nuevo?reservation=${reservation.id}&returnTo=${encodeURIComponent(`/admin/operacion`)}`;
   return (
     <article className="admin-compact-record">
       <div>
         <strong>{guest ? formatGuestName(guest.firstName, guest.lastName) : reservation.code}</strong>
         <span>{room?.displayName ?? "Sin habitación"} · {reservation.guestCount} persona{reservation.guestCount === 1 ? "" : "s"} · {formatDate(reservation.checkIn)} → {formatDate(reservation.checkOut)}</span>
       </div>
-      {action ? <Link className="admin-button admin-button--compact" href={href}>{action === "check-in" ? "Check-in" : "Check-out"}</Link> : <StatusPill status={reservation.status}>{reservationStatusLabel(reservation.status)}</StatusPill>}
+      <div className="admin-inline-actions">
+        {reservation.balance > 0 ? canManagePayments ? <Link href={paymentHref}>Saldo pendiente: {formatCurrency(reservation.balance)}</Link> : <strong>Saldo pendiente: {formatCurrency(reservation.balance)}</strong> : null}
+        {action && (action !== "check-out" || reservation.balance === 0) ? <Link className="admin-button admin-button--compact" href={href}>{action === "check-in" ? "Check-in" : "Check-out"}</Link> : !action ? <StatusPill status={reservation.status}>{reservationStatusLabel(reservation.status)}</StatusPill> : null}
+      </div>
     </article>
   );
 }

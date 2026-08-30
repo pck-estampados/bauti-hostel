@@ -115,7 +115,7 @@ export default function WalkInPage() {
           <div className="admin-field-grid">
             <label>Tarifa acordada por noche<input required min="1" step="100" type="number" value={form.nightlyRate} onChange={(event) => setForm({ ...form, nightlyRate: Number(event.target.value) })} /></label>
             <label>Monto pagado<input disabled={!canManagePayments} required min="0" step="100" type="number" value={form.amountPaid} onChange={(event) => setForm({ ...form, amountPaid: Number(event.target.value) })} /></label>
-            <label>Medio de pago<select disabled={!canManagePayments || form.amountPaid <= 0} value={form.paymentMethod} onChange={(event) => setForm({ ...form, paymentMethod: event.target.value as PaymentMethod })}>{Object.entries(paymentMethodLabels).filter(([key]) => !["mercado_pago", "card"].includes(key)).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
+            <label>Medio de pago<select disabled={!canManagePayments || form.amountPaid <= 0} value={form.paymentMethod} onChange={(event) => setForm({ ...form, paymentMethod: event.target.value as PaymentMethod })}>{Object.entries(paymentMethodLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
             <label className="admin-field--full">Observaciones <small>{canManageNotes ? "opcional" : "requiere permiso notes.manage"}</small><textarea disabled={!canManageNotes} rows={3} maxLength={4000} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></label>
           </div>
           {error ? <p className="admin-form-error" role="alert">{error}</p> : null}

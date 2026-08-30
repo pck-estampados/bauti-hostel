@@ -3,6 +3,7 @@ import type {
   InternalNote,
   ManualReservationInput,
   OperationsState,
+  Payment,
   PaymentMethod,
   Reservation,
   ReservationUpdateInput,
@@ -11,6 +12,7 @@ import type {
 } from "./types.ts";
 import { availableRoomsForStay } from "../data/reservation-management-core.ts";
 import { buildStayOperationsReadModel, isValidRoomStatusTransition } from "../data/stay-operations-core.ts";
+import { financialStatus, reservationFinancials } from "../data/payment-management-core.ts";
 
 export function nightsBetween(checkIn: string, checkOut: string): number {
   const start = Date.parse(`${checkIn}T12:00:00Z`);
@@ -27,9 +29,7 @@ export function isRoomOperationallyAvailable(status: RoomStatus): boolean {
 }
 
 export function paymentStatus(total: number, paid: number) {
-  if (paid <= 0) return "pending" as const;
-  if (paid >= total) return "paid" as const;
-  return "partial" as const;
+  return financialStatus(total, paid);
 }
 
 export function validateStay(input: { checkIn: string; checkOut: string; guestCount: number; nightlyRate: number }) {
@@ -72,7 +72,7 @@ export function createWalkIn(state: OperationsState, input: WalkInInput, actor =
   const reservation: Reservation = {
     id: reservationId, code: `WALK-${Date.now().toString().slice(-6)}`, primaryGuestId: guestId, roomId: room.id,
     guestCount: input.guestCount, checkIn: input.checkIn, checkOut: input.checkOut, nightlyRate: input.nightlyRate,
-    total, paid, balance: Math.max(total - paid, 0), status: "accommodated", paymentStatus: paymentStatus(total, paid),
+    total, currency: "ARS", paid, balance: Math.max(total - paid, 0), status: "accommodated", paymentStatus: paymentStatus(total, paid),
     source: "walk_in", notes: input.notes?.trim() || undefined, actualCheckIn: createdAt, createdAt, createdBy: actor, isDemo: true,
   };
 
@@ -81,7 +81,7 @@ export function createWalkIn(state: OperationsState, input: WalkInInput, actor =
     rooms: state.rooms.map((item) => item.id === room.id ? { ...item, status: "occupied", statusNote: undefined } : item),
     guests: selectedGuest ? state.guests : [guest, ...state.guests],
     reservations: [reservation, ...state.reservations],
-    payments: paid > 0 ? [{ id: id("payment"), reservationId, guestId, amount: paid, currency: "ARS", method: input.paymentMethod, createdAt, createdBy: actor, isDemo: true }, ...state.payments] : state.payments,
+    payments: paid > 0 ? [{ id: id("payment"), reservationId, guestId, amount: paid, currency: "ARS", direction: "charge", status: "posted", method: input.paymentMethod, createdAt, createdBy: actor, createdByName: actor, isDemo: true }, ...state.payments] : state.payments,
     notes: input.notes?.trim() ? [{ id: id("note"), entityType: "reservation", entityId: reservationId, text: input.notes.trim(), author: actor, createdAt, isDemo: true }, ...state.notes] : state.notes,
     audit: [{ id: id("audit"), action: "walk_in.created_and_checked_in", entityType: "reservation", entityId: reservationId, actor, createdAt, summary: `Ingreso directo registrado en ${room.displayName}.`, isDemo: true }, ...state.audit],
   };
@@ -106,11 +106,11 @@ export function createManualReservation(state: OperationsState, input: ManualRes
     reservations: [{
       id: reservationId, code: `RES-${Date.now().toString().slice(-6)}`, primaryGuestId: guestId, roomId: room.id,
       guestCount: input.guestCount, checkIn: input.checkIn, checkOut: input.checkOut, expectedArrival: input.expectedArrival,
-      nightlyRate: input.nightlyRate, total, paid, balance: Math.max(total - paid, 0), status: "confirmed",
+      nightlyRate: input.nightlyRate, total, currency: "ARS", paid, balance: Math.max(total - paid, 0), status: "confirmed",
       paymentStatus: paymentStatus(total, paid), source: input.source, externalReference: input.externalReference?.trim() || undefined, notes: input.notes?.trim() || undefined,
       createdAt, createdBy: actor, isDemo: true,
     }, ...state.reservations],
-    payments: paid > 0 ? [{ id: id("payment"), reservationId, guestId, amount: paid, currency: "ARS", method: input.paymentMethod, createdAt, createdBy: actor, isDemo: true }, ...state.payments] : state.payments,
+    payments: paid > 0 ? [{ id: id("payment"), reservationId, guestId, amount: paid, currency: "ARS", direction: "charge", status: "posted", method: input.paymentMethod, createdAt, createdBy: actor, createdByName: actor, isDemo: true }, ...state.payments] : state.payments,
     audit: [{ id: id("audit"), action: "reservation.created", entityType: "reservation", entityId: reservationId, actor, createdAt, summary: `Reserva manual creada para ${room.displayName}.`, isDemo: true }, ...state.audit],
   };
 }
@@ -261,13 +261,58 @@ export function registerPayment(state: OperationsState, input: { reservationId: 
   if (input.amount <= 0) throw new Error("El importe debe ser mayor a cero.");
   if (input.amount > reservation.balance) throw new Error("El importe supera el saldo pendiente.");
   const createdAt = nowIso();
-  const paid = reservation.paid + input.amount;
-  const balance = Math.max(reservation.total - paid, 0);
+  const payment: Payment = {
+    id: id("payment"),
+    reservationId: reservation.id,
+    guestId: reservation.primaryGuestId,
+    amount: input.amount,
+    currency: reservation.currency,
+    direction: "charge",
+    status: "posted",
+    method: input.method,
+    reference: input.reference?.trim() || undefined,
+    note: input.note?.trim() || undefined,
+    createdAt,
+    createdBy: actor,
+    createdByName: actor,
+    isDemo: true,
+  };
+  const payments = [payment, ...state.payments];
+  const financials = reservationFinancials(reservation.total, payments, reservation.id);
   return {
     ...state,
-    reservations: state.reservations.map((item) => item.id === reservation.id ? { ...item, paid, balance, paymentStatus: paymentStatus(item.total, paid) } : item),
-    payments: [{ id: id("payment"), reservationId: reservation.id, guestId: reservation.primaryGuestId, amount: input.amount, currency: "ARS", method: input.method, reference: input.reference?.trim() || undefined, note: input.note?.trim() || undefined, createdAt, createdBy: actor, isDemo: true }, ...state.payments],
+    reservations: state.reservations.map((item) => item.id === reservation.id ? { ...item, ...financials } : item),
+    payments,
     audit: [{ id: id("audit"), action: "payment.registered", entityType: "reservation", entityId: reservation.id, actor, createdAt, summary: `Pago manual registrado para ${reservation.code}.`, isDemo: true }, ...state.audit],
+  };
+}
+
+export function voidPayment(
+  state: OperationsState,
+  paymentId: string,
+  reason: string,
+  actor = DEMO_OPERATOR,
+): OperationsState {
+  const payment = state.payments.find((item) => item.id === paymentId);
+  if (!payment) throw new Error("No se encontró el pago.");
+  if (payment.status === "voided") throw new Error("El pago ya está anulado.");
+  if (reason.trim().length < 2 || reason.trim().length > 500) throw new Error("Indicá un motivo de anulación válido.");
+  const reservation = state.reservations.find((item) => item.id === payment.reservationId);
+  if (!reservation) throw new Error("No se encontró la reserva asociada.");
+  const createdAt = nowIso();
+  const payments = state.payments.map((item) => item.id === paymentId ? {
+    ...item,
+    status: "voided" as const,
+    voidedAt: createdAt,
+    voidedBy: actor,
+    voidReason: reason.trim(),
+  } : item);
+  const financials = reservationFinancials(reservation.total, payments, reservation.id);
+  return {
+    ...state,
+    payments,
+    reservations: state.reservations.map((item) => item.id === reservation.id ? { ...item, ...financials } : item),
+    audit: [{ id: id("audit"), action: "payment.voided", entityType: "payment", entityId: payment.id, actor, createdAt, summary: `Pago anulado para ${reservation.code}.`, isDemo: true }, ...state.audit],
   };
 }
 

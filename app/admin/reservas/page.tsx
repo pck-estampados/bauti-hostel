@@ -12,7 +12,8 @@ const sourceLabels: Record<string, string> = {
 };
 
 export default function ReservationsPage() {
-  const { state, mode } = useOperations();
+  const { state, mode, permissions } = useOperations();
+  const canManagePayments = mode === "demo" || permissions.includes("payments.manage");
   const [filters, setFilters] = useState({ date: "", status: "", source: "", roomId: "" });
   const reservations = useMemo(() => state.reservations.filter((reservation) => (
     (!filters.date || (reservation.checkIn <= filters.date && reservation.checkOut > filters.date))
@@ -41,11 +42,11 @@ export default function ReservationsPage() {
         <div className="admin-list-panel"><EmptyState title="Sin resultados" description="No hay reservas que coincidan con los filtros seleccionados." /></div>
       ) : (
         <div className="admin-list-panel">
-          <div className="admin-list-panel__head"><span>Huésped</span><span>Estadía</span><span>Habitación</span><span>Estado</span><span>Saldo</span><span>Acción</span></div>
+          <div className="admin-list-panel__head"><span>Huésped</span><span>Estadía</span><span>Habitación</span><span>Estado</span><span>Finanzas</span><span>Acción</span></div>
           {reservations.map((reservation) => {
             const guest = state.guests.find((item) => item.id === reservation.primaryGuestId);
             const room = state.rooms.find((item) => item.id === reservation.roomId);
-            return <article className="admin-list-row" key={reservation.id}><div><strong>{guest ? formatGuestName(guest.firstName, guest.lastName) : "Sin huésped"}</strong><small>{reservation.code} · {sourceLabels[reservation.source] ?? reservation.source} · {reservation.guestCount} personas</small></div><span>{formatDate(reservation.checkIn)} → {formatDate(reservation.checkOut)}</span><span>{room?.displayName ?? "Sin asignar"}</span><StatusPill status={reservation.status}>{reservationStatusLabel(reservation.status)}</StatusPill><strong>{formatCurrency(reservation.balance)}</strong><div className="admin-inline-actions"><Link href={`/admin/reservas/${reservation.id}/editar`}>Ver / editar</Link>{["confirmed", "partially_paid", "paid"].includes(reservation.status) ? <Link href={`/admin/check-in?reservation=${reservation.id}`}>Check-in</Link> : null}{reservation.status === "accommodated" ? <Link href={`/admin/check-out?reservation=${reservation.id}`}>Check-out</Link> : null}</div></article>;
+            return <article className="admin-list-row" key={reservation.id}><div><strong>{guest ? formatGuestName(guest.firstName, guest.lastName) : "Sin huésped"}</strong><small>{reservation.code} · {sourceLabels[reservation.source] ?? reservation.source} · {reservation.guestCount} personas</small></div><span>{formatDate(reservation.checkIn)} → {formatDate(reservation.checkOut)}</span><span>{room?.displayName ?? "Sin asignar"}</span><StatusPill status={reservation.status}>{reservationStatusLabel(reservation.status)}</StatusPill><div className="admin-financial-cell"><span>Total {formatCurrency(reservation.total)}</span><span>Pagado {formatCurrency(reservation.paid)}</span><strong>Saldo {formatCurrency(reservation.balance)}</strong></div><div className="admin-inline-actions"><Link href={`/admin/reservas/${reservation.id}`}>Ver</Link>{["inquiry", "pending", "pending_deposit", "confirmed", "partially_paid", "paid"].includes(reservation.status) ? <Link href={`/admin/reservas/${reservation.id}/editar`}>Editar</Link> : null}{reservation.balance > 0 && canManagePayments ? <Link href={`/admin/pagos/nuevo?reservation=${reservation.id}`}>Registrar pago</Link> : null}{["confirmed", "partially_paid", "paid"].includes(reservation.status) ? <Link href={`/admin/check-in?reservation=${reservation.id}`}>Check-in</Link> : null}{reservation.status === "accommodated" ? <Link href={`/admin/check-out?reservation=${reservation.id}`}>Check-out</Link> : null}</div></article>;
           })}
         </div>
       )}

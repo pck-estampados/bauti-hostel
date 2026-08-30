@@ -35,27 +35,27 @@ export function createDemoOperationsState(): OperationsState {
     reservations: [
       {
         id: "reservation-demo-a", code: "DEMO-RES-A", primaryGuestId: "guest-demo-a", roomId: "room-demo-a", guestCount: 2,
-        checkIn: yesterday, checkOut: tomorrow, nightlyRate: DEFAULT_REFERENCE_RATE_ARS, total: 100_000, paid: 50_000, balance: 50_000,
+        checkIn: yesterday, checkOut: tomorrow, nightlyRate: DEFAULT_REFERENCE_RATE_ARS, total: 100_000, currency: "ARS", paid: 50_000, balance: 50_000,
         status: "accommodated", paymentStatus: "partial", source: "whatsapp", notes: "Dato de prueba: solicitó una habitación tranquila.",
         actualCheckIn: atLocalTime(yesterday, "15:06"), createdAt: atLocalTime(yesterday, "11:20"), createdBy: DEMO_OPERATOR, isDemo: true,
       },
       {
         id: "reservation-demo-b", code: "DEMO-RES-B", primaryGuestId: "guest-demo-b", roomId: "room-demo-b", guestCount: 2,
-        checkIn: today, checkOut: afterTomorrow, expectedArrival: "18:30", nightlyRate: DEFAULT_REFERENCE_RATE_ARS, total: 100_000, paid: 30_000, balance: 70_000,
+        checkIn: today, checkOut: afterTomorrow, expectedArrival: "18:30", nightlyRate: DEFAULT_REFERENCE_RATE_ARS, total: 100_000, currency: "ARS", paid: 30_000, balance: 70_000,
         status: "confirmed", paymentStatus: "partial", source: "instagram", notes: "Dato de prueba: avisó que llegará por la tarde.",
         createdAt: atLocalTime(today, "08:25"), createdBy: DEMO_OPERATOR, isDemo: true,
       },
       {
         id: "reservation-demo-c", code: "DEMO-RES-C", primaryGuestId: "guest-demo-c", roomId: "room-demo-c", guestCount: 1,
-        checkIn: twoDaysAgo, checkOut: today, nightlyRate: DEFAULT_REFERENCE_RATE_ARS, total: 100_000, paid: 100_000, balance: 0,
+        checkIn: twoDaysAgo, checkOut: today, nightlyRate: DEFAULT_REFERENCE_RATE_ARS, total: 100_000, currency: "ARS", paid: 100_000, balance: 0,
         status: "accommodated", paymentStatus: "paid", source: "walk_in", actualCheckIn: atLocalTime(twoDaysAgo, "18:03"),
         createdAt: atLocalTime(twoDaysAgo, "18:00"), createdBy: DEMO_OPERATOR, isDemo: true,
       },
     ],
     payments: [
-      { id: "payment-demo-a", reservationId: "reservation-demo-a", guestId: "guest-demo-a", amount: 50_000, currency: "ARS", method: "transfer", createdAt: atLocalTime(yesterday, "14:56"), createdBy: DEMO_OPERATOR, isDemo: true },
-      { id: "payment-demo-b", reservationId: "reservation-demo-b", guestId: "guest-demo-b", amount: 30_000, currency: "ARS", method: "cash", createdAt: atLocalTime(today, "08:26"), createdBy: DEMO_OPERATOR, isDemo: true },
-      { id: "payment-demo-c", reservationId: "reservation-demo-c", guestId: "guest-demo-c", amount: 100_000, currency: "ARS", method: "cash", createdAt: atLocalTime(twoDaysAgo, "18:02"), createdBy: DEMO_OPERATOR, isDemo: true },
+      { id: "payment-demo-a", reservationId: "reservation-demo-a", guestId: "guest-demo-a", amount: 50_000, currency: "ARS", direction: "charge", status: "posted", method: "transfer", createdAt: atLocalTime(yesterday, "14:56"), createdBy: DEMO_OPERATOR, createdByName: DEMO_OPERATOR, isDemo: true },
+      { id: "payment-demo-b", reservationId: "reservation-demo-b", guestId: "guest-demo-b", amount: 30_000, currency: "ARS", direction: "charge", status: "posted", method: "cash", createdAt: atLocalTime(today, "08:26"), createdBy: DEMO_OPERATOR, createdByName: DEMO_OPERATOR, isDemo: true },
+      { id: "payment-demo-c", reservationId: "reservation-demo-c", guestId: "guest-demo-c", amount: 100_000, currency: "ARS", direction: "charge", status: "posted", method: "cash", createdAt: atLocalTime(twoDaysAgo, "18:02"), createdBy: DEMO_OPERATOR, createdByName: DEMO_OPERATOR, isDemo: true },
     ],
     notes: [
       { id: "note-demo-a", entityType: "reservation", entityId: "reservation-demo-b", text: "Nota de prueba: confirmar horario de llegada durante la tarde.", author: DEMO_OPERATOR, createdAt: atLocalTime(today, "09:05"), isDemo: true },

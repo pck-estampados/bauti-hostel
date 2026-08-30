@@ -11,6 +11,7 @@ import {
   setRoomStatus,
   updateGuest,
   updateReservation,
+  voidPayment,
 } from "../lib/operations";
 import type { OperationsState } from "../lib/types";
 import type { OperationsRepository } from "./operations-repository";
@@ -47,6 +48,9 @@ export class DemoOperationsRepository implements OperationsRepository {
   }
   async registerPayment(input: Parameters<OperationsRepository["registerPayment"]>[0]) {
     this.state = registerPayment(this.state, input, this.actor); return this.loadSnapshot();
+  }
+  async voidPayment(paymentId: string, reason: string) {
+    this.state = voidPayment(this.state, paymentId, reason, this.actor); return this.loadSnapshot();
   }
   async addNote(input: Parameters<OperationsRepository["addNote"]>[0]) {
     this.state = addInternalNote(this.state, input, this.actor); return this.loadSnapshot();

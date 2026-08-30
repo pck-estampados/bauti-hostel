@@ -14,7 +14,7 @@ const navigation = [
   { href: "/admin/huespedes/actuales", label: "Huéspedes alojados", code: "HU" },
   { href: "/admin/reservas", label: "Reservas", code: "RE" },
   { href: "/admin/calendario", label: "Calendario", code: "CA" },
-  { href: "/admin/pagos/pendientes", label: "Pagos y saldos", code: "PA" },
+  { href: "/admin/caja", label: "Caja", code: "CJ" },
   { href: "/admin/notas", label: "Notas internas", code: "NO" },
   { href: "/admin/galeria", label: "Galería", code: "GA" },
   { href: "/admin/configuracion", label: "Configuración", code: "CO" },

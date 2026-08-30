@@ -41,7 +41,7 @@ type GuestRow = {
 type ReservationRow = {
   id: string; code: string; primary_guest_id: string; guest_count: number;
   check_in: string; check_out: string; expected_arrival: string | null;
-  nightly_rate: number; agreed_total: number; status: Reservation["status"];
+  nightly_rate: number; agreed_total: number; currency: "ARS"; status: Reservation["status"];
   source: Reservation["source"]; external_reference: string | null; internal_summary: string | null;
   actual_check_in_at: string | null; actual_check_out_at: string | null;
   created_at: string; created_by: string;
@@ -50,8 +50,11 @@ type ReservationRow = {
 type FinancialRow = { reservation_id: string; paid_total: number; balance: number };
 type PaymentRow = {
   id: string; reservation_id: string; guest_id: string | null; amount: number;
-  currency: "ARS"; method: Payment["method"]; reference: string | null;
-  note: string | null; occurred_at: string; created_by: string;
+  currency: "ARS"; direction: Payment["direction"]; status: Payment["status"];
+  method: Payment["method"]; reference: string | null; note: string | null;
+  occurred_at: string; created_by: string; voided_at: string | null;
+  voided_by: string | null; void_reason: string | null;
+  created_by_profile: Array<{ display_name: string | null }> | null;
 };
 type NoteRow = {
   id: string; entity_type: InternalNote["entityType"]; entity_id: string | null;
@@ -85,6 +88,10 @@ function assertNoError(error: { code?: string; message: string } | null, fallbac
     ROOM_CAPACITY_EXCEEDED: "La cantidad de huéspedes supera la capacidad de la habitación.",
     PAYMENT_EXCEEDS_TOTAL: "El pago supera el total de la estadía.",
     PAYMENT_EXCEEDS_BALANCE: "El pago supera el saldo pendiente.",
+    INVALID_PAYMENT: "Revisá el importe y el método de pago.",
+    RESERVATION_NOT_PAYABLE: "La reserva no admite nuevos pagos.",
+    INVALID_VOID_REASON: "Indicá un motivo de anulación válido.",
+    PAYMENT_ALREADY_VOIDED: "El pago ya está anulado.",
     OUTSTANDING_BALANCE: "La reserva todavía tiene saldo pendiente.",
     GUEST_ALREADY_EXISTS: "Ya existe un huésped con ese documento.",
     EXTERNAL_REFERENCE_ALREADY_EXISTS: "Ya existe una reserva con esa referencia externa.",
@@ -109,6 +116,7 @@ function assertNoError(error: { code?: string; message: string } | null, fallbac
     RESERVATION_NOT_FOUND: "No se encontró la reserva.",
     ROOM_NOT_FOUND: "No se encontró la habitación.",
     ROOM_ASSIGNMENT_REQUIRED: "La reserva no tiene una habitación asignada.",
+    PAYMENT_NOT_FOUND: "No se encontró el pago.",
   };
   const notFound = Object.entries(notFoundMessages).find(([code]) => error.message.includes(code));
   if (notFound) throw new OperationsError(notFound[1], 404, notFound[0]);
@@ -125,6 +133,8 @@ function assertNoError(error: { code?: string; message: string } | null, fallbac
       || error.message.includes("ROOM_NOT_OCCUPIED")
       || error.message.includes("INVALID_ROOM_STATUS_TRANSITION")
       || error.message.includes("OCCUPIED_ROOM_STATUS_LOCKED")
+      || error.message.includes("PAYMENT_ALREADY_VOIDED")
+      || error.message.includes("RESERVATION_NOT_PAYABLE")
       ? 409
       : error.code === "22023" || error.code === "23514"
         ? 422
@@ -178,9 +188,9 @@ export class SupabaseOperationsRepository implements OperationsRepository {
       await Promise.all([
         this.client.from("rooms").select("id, room_type_id, code, display_name, capacity, status, status_note, active").order("code"),
         this.client.from("guests").select("id, first_name, last_name, phone, document_number, email, created_at").is("deleted_at", null).order("created_at", { ascending: false }),
-        this.client.from("reservations").select("id, code, primary_guest_id, guest_count, check_in, check_out, expected_arrival, nightly_rate, agreed_total, status, source, external_reference, internal_summary, actual_check_in_at, actual_check_out_at, created_at, created_by, room_assignments(room_id,status)").is("deleted_at", null).order("created_at", { ascending: false }),
+        this.client.from("reservations").select("id, code, primary_guest_id, guest_count, check_in, check_out, expected_arrival, nightly_rate, agreed_total, currency, status, source, external_reference, internal_summary, actual_check_in_at, actual_check_out_at, created_at, created_by, room_assignments(room_id,status)").is("deleted_at", null).order("created_at", { ascending: false }),
         this.client.from("reservation_financials").select("reservation_id, paid_total, balance"),
-        this.client.from("payments").select("id, reservation_id, guest_id, amount, currency, method, reference, note, occurred_at, created_by").eq("status", "posted").order("occurred_at", { ascending: false }),
+        this.client.from("payments").select("id, reservation_id, guest_id, direction, status, amount, currency, method, reference, note, occurred_at, created_by, voided_at, voided_by, void_reason, created_by_profile:profiles!payments_created_by_fkey(display_name)").order("occurred_at", { ascending: false }),
         this.client.from("internal_notes").select("id, entity_type, entity_id, body, created_by, created_at").is("deleted_at", null).order("created_at", { ascending: false }),
         this.client.from("maintenance_issues").select("id, room_id, area, title, priority, status").order("created_at", { ascending: false }),
         this.client.from("activity_logs").select("id, action, entity_type, entity_id, actor_id, created_at, summary").order("created_at", { ascending: false }).limit(200),
@@ -225,6 +235,7 @@ export class SupabaseOperationsRepository implements OperationsRepository {
         expectedArrival: row.expected_arrival ?? undefined,
         nightlyRate: Number(row.nightly_rate),
         total,
+        currency: row.currency,
         paid,
         balance: Number(financial?.balance ?? Math.max(total - paid, 0)),
         status: row.status,
@@ -262,9 +273,13 @@ export class SupabaseOperationsRepository implements OperationsRepository {
       payments: ((paymentsResult.data ?? []) as PaymentRow[]).map<Payment>((row) => ({
         id: row.id, reservationId: row.reservation_id,
         guestId: row.guest_id ?? reservationGuest.get(row.reservation_id) ?? "",
-        amount: Number(row.amount), currency: row.currency, method: row.method,
+        amount: Number(row.amount), currency: row.currency, direction: row.direction,
+        status: row.status, method: row.method,
         reference: row.reference ?? undefined, note: row.note ?? undefined,
-        createdAt: row.occurred_at, createdBy: row.created_by, isDemo: false,
+        createdAt: row.occurred_at, createdBy: row.created_by,
+        createdByName: row.created_by_profile?.[0]?.display_name ?? undefined,
+        voidedAt: row.voided_at ?? undefined, voidedBy: row.voided_by ?? undefined,
+        voidReason: row.void_reason ?? undefined, isDemo: false,
       })),
       notes: ((notesResult.data ?? []) as NoteRow[]).map<InternalNote>((row) => ({
         id: row.id, entityType: row.entity_type, entityId: row.entity_id ?? undefined,
@@ -391,6 +406,20 @@ export class SupabaseOperationsRepository implements OperationsRepository {
     const payload = paymentInputSchema.parse(input);
     const { error } = await this.client.rpc("register_payment", { p_payload: payload });
     assertNoError(error, "No fue posible registrar el pago.");
+    return this.loadSnapshot();
+  }
+
+  async voidPayment(paymentId: string, reason: string) {
+    const id = uuidSchema.parse(paymentId);
+    const validatedReason = reason.trim();
+    if (validatedReason.length < 2 || validatedReason.length > 500) {
+      throw new OperationsError("Indicá un motivo de anulación válido.", 422, "INVALID_VOID_REASON");
+    }
+    const { error } = await this.client.rpc("void_payment", {
+      p_payment_id: id,
+      p_reason: validatedReason,
+    });
+    assertNoError(error, "No fue posible anular el pago.");
     return this.loadSnapshot();
   }
 

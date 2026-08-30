@@ -78,6 +78,11 @@ export const paymentInputSchema = z.object({
   note: optionalText(1000),
 }).strict();
 
+export const voidPaymentInputSchema = z.object({
+  paymentId: uuidSchema,
+  reason: z.string().trim().min(2).max(500),
+}).strict();
+
 export const noteInputSchema = z.object({
   entityType: z.enum(["general", "guest", "reservation", "room", "payment", "issue"]),
   entityId: uuidSchema.optional(),

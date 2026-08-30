@@ -11,6 +11,7 @@ import {
   reservationUpdateInputSchema,
   roomStatusInputSchema,
   uuidSchema,
+  voidPaymentInputSchema,
   walkInInputSchema,
 } from "@/app/admin/data/validation";
 import { OperationsError } from "@/app/admin/data/operations-error";
@@ -29,6 +30,7 @@ const operationSchema = z.discriminatedUnion("operation", [
   z.object({ operation: z.literal("checkIn"), payload: z.object({ reservationId: uuidSchema }) }),
   z.object({ operation: z.literal("checkOut"), payload: z.object({ reservationId: uuidSchema }) }),
   z.object({ operation: z.literal("registerPayment"), payload: paymentInputSchema }),
+  z.object({ operation: z.literal("voidPayment"), payload: voidPaymentInputSchema }),
   z.object({ operation: z.literal("addNote"), payload: noteInputSchema }),
   z.object({ operation: z.literal("changeRoomStatus"), payload: roomStatusInputSchema }),
 ]);
@@ -62,6 +64,7 @@ const operationPermissions: Record<z.infer<typeof operationSchema>["operation"],
   checkIn: ["reservations.manage"],
   checkOut: ["reservations.manage"],
   registerPayment: ["payments.manage"],
+  voidPayment: ["payments.manage"],
   addNote: ["notes.manage"],
   changeRoomStatus: ["rooms.manage", "housekeeping.manage"],
 };
@@ -93,6 +96,7 @@ export async function POST(request: NextRequest) {
       case "checkIn": state = await repository.checkIn(operation.payload.reservationId); break;
       case "checkOut": state = await repository.checkOut(operation.payload.reservationId); break;
       case "registerPayment": state = await repository.registerPayment(operation.payload); break;
+      case "voidPayment": state = await repository.voidPayment(operation.payload.paymentId, operation.payload.reason); break;
       case "addNote": state = await repository.addNote(operation.payload); break;
       case "changeRoomStatus": state = await repository.changeRoomStatus(operation.payload.roomId, operation.payload.status, operation.payload.reason); break;
     }

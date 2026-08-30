@@ -14,15 +14,23 @@ const reservationLabels: Record<ReservationStatus, string> = {
 };
 
 export const paymentMethodLabels: Record<PaymentMethod, string> = {
-  cash: "Efectivo", transfer: "Transferencia", mercado_pago: "Mercado Pago (futuro)", card: "Tarjeta (futuro)", other: "Otro",
+  cash: "Efectivo", transfer: "Transferencia", mercado_pago: "Mercado Pago", card: "Tarjeta", other: "Otro",
 };
 
 export function formatCurrency(value: number) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(value);
+  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 }).format(value);
 }
 
 export function formatDate(value: string) {
   return new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "short" }).format(new Date(`${value}T12:00:00`));
+}
+
+export function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("es-AR", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "America/Argentina/Buenos_Aires",
+  }).format(new Date(value));
 }
 
 export function roomStatusLabel(status: RoomStatus) { return roomLabels[status]; }

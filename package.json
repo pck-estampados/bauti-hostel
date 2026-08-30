@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "npm run build && node --experimental-strip-types --test tests/media-gallery.test.mjs tests/rendered-html.test.mjs tests/reservation-management.test.mjs tests/room-management.test.mjs tests/stay-operations.test.mjs tests/supabase-foundation.test.mjs",
+    "test": "npm run build && node --experimental-strip-types --test tests/media-gallery.test.mjs tests/payment-management.test.mjs tests/rendered-html.test.mjs tests/reservation-management.test.mjs tests/room-management.test.mjs tests/stay-operations.test.mjs tests/supabase-foundation.test.mjs",
     "lint": "eslint . --ignore-pattern .wrangler --ignore-pattern .vinext --ignore-pattern .npm-cache --ignore-pattern dist --ignore-pattern .next --ignore-pattern out --ignore-pattern outputs --ignore-pattern work",
     "typecheck": "tsc --noEmit"
   },

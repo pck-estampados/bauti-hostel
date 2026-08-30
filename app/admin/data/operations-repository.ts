@@ -35,6 +35,7 @@ export interface OperationsRepository {
     reference?: string;
     note?: string;
   }): Promise<OperationsState>;
+  voidPayment(paymentId: string, reason: string): Promise<OperationsState>;
   addNote(input: NoteInput): Promise<OperationsState>;
   changeRoomStatus(roomId: string, status: RoomStatus, reason?: string): Promise<OperationsState>;
 }

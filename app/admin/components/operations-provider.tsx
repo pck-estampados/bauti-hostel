@@ -25,6 +25,15 @@ import type {
   ReservationUpdateInput,
   WalkInInput,
 } from "../lib/types";
+import type {
+  WellnessBookingInput,
+  WellnessProductInput,
+  WellnessSlotInput,
+} from "../data/wellness-types";
+import type {
+  WellnessBookingUpdateInput,
+  WellnessTransitionInput,
+} from "../data/operations-repository";
 
 type GuestInput = { firstName: string; lastName: string; phone: string; document?: string; email?: string };
 type NoteInput = Omit<InternalNote, "id" | "author" | "createdAt" | "isDemo">;
@@ -48,6 +57,11 @@ type OperationsContextValue = {
   voidPayment: (paymentId: string, reason: string) => Promise<void>;
   addNote: (input: NoteInput) => Promise<void>;
   changeRoomStatus: (roomId: string, status: RoomStatus, reason?: string) => Promise<void>;
+  saveWellnessProduct: (input: WellnessProductInput) => Promise<void>;
+  saveWellnessSlot: (input: WellnessSlotInput) => Promise<void>;
+  createWellnessBooking: (input: WellnessBookingInput) => Promise<void>;
+  updateWellnessBooking: (input: WellnessBookingUpdateInput) => Promise<void>;
+  transitionWellnessBooking: (input: WellnessTransitionInput) => Promise<void>;
 };
 
 const OperationsContext = createContext<OperationsContextValue | null>(null);
@@ -90,6 +104,13 @@ export function OperationsProvider({
     setState(update);
   }
 
+  async function executeWellness(operation: string, payload: unknown) {
+    if (mode !== "production") {
+      throw new Error("La operación wellness sólo está disponible con datos reales.");
+    }
+    await remote(operation, payload);
+  }
+
   const value = useMemo<OperationsContextValue>(() => ({
     state,
     actor,
@@ -108,6 +129,11 @@ export function OperationsProvider({
     voidPayment: (paymentId, reason) => execute("voidPayment", { paymentId, reason }, (previous) => voidPayment(previous, paymentId, reason, actor)),
     addNote: (input) => execute("addNote", input, (previous) => addInternalNote(previous, input, actor)),
     changeRoomStatus: (roomId, status, reason) => execute("changeRoomStatus", { roomId, status, reason }, (previous) => setRoomStatus(previous, roomId, status, actor)),
+    saveWellnessProduct: (input) => executeWellness("saveWellnessProduct", input),
+    saveWellnessSlot: (input) => executeWellness("saveWellnessSlot", input),
+    createWellnessBooking: (input) => executeWellness("createWellnessBooking", input),
+    updateWellnessBooking: (input) => executeWellness("updateWellnessBooking", input),
+    transitionWellnessBooking: (input) => executeWellness("transitionWellnessBooking", input),
   // State updates use React's functional form; state itself is exposed in the context value.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [actor, mode, permissions, state]);

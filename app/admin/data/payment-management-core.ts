@@ -12,6 +12,8 @@ export type CashFilters = {
   from?: string;
   to?: string;
   method?: PaymentMethod | "";
+  targetType?: Payment["targetType"] | "";
+  targetId?: string;
   reservationId?: string;
 };
 
@@ -64,6 +66,8 @@ export function buildCashReadModel(
       return (!filters.from || localDate >= filters.from)
         && (!filters.to || localDate <= filters.to)
         && (!filters.method || payment.method === filters.method)
+        && (!filters.targetType || payment.targetType === filters.targetType)
+        && (!filters.targetId || payment.targetId === filters.targetId)
         && (!filters.reservationId || payment.reservationId === filters.reservationId);
     })
     .toSorted((left, right) => right.createdAt.localeCompare(left.createdAt));

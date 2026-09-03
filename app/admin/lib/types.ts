@@ -1,3 +1,10 @@
+import type {
+  WellnessBooking,
+  WellnessEvent,
+  WellnessProduct,
+  WellnessSlot,
+} from "../data/wellness-types.ts";
+
 export type RoomStatus =
   | "available"
   | "reserved"
@@ -123,8 +130,13 @@ export type Reservation = {
 
 export type Payment = {
   id: string;
-  reservationId: string;
-  guestId: string;
+  targetType: "stay" | "wellness";
+  targetId: string;
+  targetCode: string;
+  reservationId?: string;
+  financialReferenceId?: string;
+  wellnessBookingId?: string;
+  guestId?: string;
   amount: number;
   currency: "ARS";
   direction: PaymentDirection;
@@ -182,6 +194,10 @@ export type OperationsState = {
   audit: AuditEvent[];
   availabilityBlocks: AvailabilityBlock[];
   housekeepingTasks: HousekeepingTask[];
+  wellnessProducts: WellnessProduct[];
+  wellnessSlots: WellnessSlot[];
+  wellnessBookings: WellnessBooking[];
+  wellnessEvents: WellnessEvent[];
 };
 
 export type WalkInInput = {

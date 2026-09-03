@@ -15,6 +15,13 @@ import {
   walkInInputSchema,
 } from "@/app/admin/data/validation";
 import { OperationsError } from "@/app/admin/data/operations-error";
+import {
+  wellnessBookingInputSchema,
+  wellnessBookingUpdateSchema,
+  wellnessProductInputSchema,
+  wellnessSlotInputSchema,
+  wellnessTransitionSchema,
+} from "@/app/admin/data/wellness-validation";
 import { getStaffSession } from "@/app/lib/auth/staff-session";
 import { assertProductionEnvironment } from "@/app/lib/config/env";
 import { assertSameOrigin } from "@/app/lib/security/same-origin";
@@ -33,6 +40,11 @@ const operationSchema = z.discriminatedUnion("operation", [
   z.object({ operation: z.literal("voidPayment"), payload: voidPaymentInputSchema }),
   z.object({ operation: z.literal("addNote"), payload: noteInputSchema }),
   z.object({ operation: z.literal("changeRoomStatus"), payload: roomStatusInputSchema }),
+  z.object({ operation: z.literal("saveWellnessProduct"), payload: wellnessProductInputSchema }),
+  z.object({ operation: z.literal("saveWellnessSlot"), payload: wellnessSlotInputSchema }),
+  z.object({ operation: z.literal("createWellnessBooking"), payload: wellnessBookingInputSchema }),
+  z.object({ operation: z.literal("updateWellnessBooking"), payload: wellnessBookingUpdateSchema }),
+  z.object({ operation: z.literal("transitionWellnessBooking"), payload: wellnessTransitionSchema }),
 ]);
 
 async function repositoryForRequest() {
@@ -54,7 +66,9 @@ export async function GET() {
   return NextResponse.json({ state: await context.repository.loadSnapshot() });
 }
 
-const operationPermissions: Record<z.infer<typeof operationSchema>["operation"], string[]> = {
+type PermissionRule = string[] | { allOf: string[] };
+
+const operationPermissions: Record<z.infer<typeof operationSchema>["operation"], PermissionRule> = {
   addGuest: ["guests.manage"],
   updateGuest: ["guests.manage"],
   createWalkIn: ["reservations.manage"],
@@ -67,6 +81,11 @@ const operationPermissions: Record<z.infer<typeof operationSchema>["operation"],
   voidPayment: ["payments.manage"],
   addNote: ["notes.manage"],
   changeRoomStatus: ["rooms.manage", "housekeeping.manage"],
+  saveWellnessProduct: ["experiences.manage"],
+  saveWellnessSlot: ["experiences.manage"],
+  createWellnessBooking: { allOf: ["experiences.manage", "payments.manage"] },
+  updateWellnessBooking: ["experiences.manage"],
+  transitionWellnessBooking: ["experiences.manage"],
 };
 
 export async function POST(request: NextRequest) {
@@ -76,8 +95,11 @@ export async function POST(request: NextRequest) {
     if (!context) return NextResponse.json({ error: "Sesión no válida." }, { status: 401 });
 
     const operation = operationSchema.parse(await request.json());
-    const acceptedPermissions = operationPermissions[operation.operation];
-    if (!acceptedPermissions.some((permission) => context.staff.permissions.includes(permission))) {
+    const requiredPermissions = operationPermissions[operation.operation];
+    const accepted = Array.isArray(requiredPermissions)
+      ? requiredPermissions.some((permission) => context.staff.permissions.includes(permission))
+      : requiredPermissions.allOf.every((permission) => context.staff.permissions.includes(permission));
+    if (!accepted) {
       return NextResponse.json({ error: "No tenés permiso para realizar esta operación." }, { status: 403 });
     }
     const repository = context.repository;
@@ -99,6 +121,11 @@ export async function POST(request: NextRequest) {
       case "voidPayment": state = await repository.voidPayment(operation.payload.paymentId, operation.payload.reason); break;
       case "addNote": state = await repository.addNote(operation.payload); break;
       case "changeRoomStatus": state = await repository.changeRoomStatus(operation.payload.roomId, operation.payload.status, operation.payload.reason); break;
+      case "saveWellnessProduct": state = await repository.saveWellnessProduct(operation.payload); break;
+      case "saveWellnessSlot": state = await repository.saveWellnessSlot(operation.payload); break;
+      case "createWellnessBooking": state = await repository.createWellnessBooking(operation.payload); break;
+      case "updateWellnessBooking": state = await repository.updateWellnessBooking(operation.payload); break;
+      case "transitionWellnessBooking": state = await repository.transitionWellnessBooking(operation.payload); break;
     }
     return NextResponse.json({ state });
   } catch (error) {

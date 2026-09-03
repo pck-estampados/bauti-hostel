@@ -53,9 +53,9 @@ export function createDemoOperationsState(): OperationsState {
       },
     ],
     payments: [
-      { id: "payment-demo-a", reservationId: "reservation-demo-a", guestId: "guest-demo-a", amount: 50_000, currency: "ARS", direction: "charge", status: "posted", method: "transfer", createdAt: atLocalTime(yesterday, "14:56"), createdBy: DEMO_OPERATOR, createdByName: DEMO_OPERATOR, isDemo: true },
-      { id: "payment-demo-b", reservationId: "reservation-demo-b", guestId: "guest-demo-b", amount: 30_000, currency: "ARS", direction: "charge", status: "posted", method: "cash", createdAt: atLocalTime(today, "08:26"), createdBy: DEMO_OPERATOR, createdByName: DEMO_OPERATOR, isDemo: true },
-      { id: "payment-demo-c", reservationId: "reservation-demo-c", guestId: "guest-demo-c", amount: 100_000, currency: "ARS", direction: "charge", status: "posted", method: "cash", createdAt: atLocalTime(twoDaysAgo, "18:02"), createdBy: DEMO_OPERATOR, createdByName: DEMO_OPERATOR, isDemo: true },
+      { id: "payment-demo-a", targetType: "stay", targetId: "reservation-demo-a", targetCode: "DEMO-RES-A", reservationId: "reservation-demo-a", guestId: "guest-demo-a", amount: 50_000, currency: "ARS", direction: "charge", status: "posted", method: "transfer", createdAt: atLocalTime(yesterday, "14:56"), createdBy: DEMO_OPERATOR, createdByName: DEMO_OPERATOR, isDemo: true },
+      { id: "payment-demo-b", targetType: "stay", targetId: "reservation-demo-b", targetCode: "DEMO-RES-B", reservationId: "reservation-demo-b", guestId: "guest-demo-b", amount: 30_000, currency: "ARS", direction: "charge", status: "posted", method: "cash", createdAt: atLocalTime(today, "08:26"), createdBy: DEMO_OPERATOR, createdByName: DEMO_OPERATOR, isDemo: true },
+      { id: "payment-demo-c", targetType: "stay", targetId: "reservation-demo-c", targetCode: "DEMO-RES-C", reservationId: "reservation-demo-c", guestId: "guest-demo-c", amount: 100_000, currency: "ARS", direction: "charge", status: "posted", method: "cash", createdAt: atLocalTime(twoDaysAgo, "18:02"), createdBy: DEMO_OPERATOR, createdByName: DEMO_OPERATOR, isDemo: true },
     ],
     notes: [
       { id: "note-demo-a", entityType: "reservation", entityId: "reservation-demo-b", text: "Nota de prueba: confirmar horario de llegada durante la tarde.", author: DEMO_OPERATOR, createdAt: atLocalTime(today, "09:05"), isDemo: true },
@@ -67,5 +67,9 @@ export function createDemoOperationsState(): OperationsState {
     audit: [],
     availabilityBlocks: [],
     housekeepingTasks: [],
+    wellnessProducts: [],
+    wellnessSlots: [],
+    wellnessBookings: [],
+    wellnessEvents: [],
   };
 }

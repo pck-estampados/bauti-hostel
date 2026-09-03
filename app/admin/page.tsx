@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { useOperations } from "./components/operations-provider";
 import { AdminPageHeader, EmptyState, formatCurrency, formatDate, reservationStatusLabel, roomStatusLabel, StatusPill } from "./components/ui";
+import { buildWellnessReadModel, wellnessLocalDate, wellnessLocalTime } from "./data/wellness-capacity-core";
 import { dashboardSnapshot, formatGuestName, isRoomOperationallyAvailable } from "./lib/operations";
 
 export default function AdminDashboardPage() {
   const { state, mode } = useOperations();
   const snapshot = dashboardSnapshot(state);
+  const wellness = buildWellnessReadModel(state);
+  const nextWellnessSlot = wellness.currentSlot ?? wellness.upcomingSlot;
   const guest = (id: string) => state.guests.find((item) => item.id === id);
   const room = (id?: string) => state.rooms.find((item) => item.id === id);
   const canCreateStay = state.rooms.some((item) => isRoomOperationallyAvailable(item.status) && (mode === "demo" || item.inventoryValid));
@@ -32,6 +35,21 @@ export default function AdminDashboardPage() {
 
       <section className="admin-metric-grid" aria-label="Resumen de hoy">
         {metrics.map((metric) => <article className={`admin-metric admin-metric--${metric.tone}`} key={metric.label}><span>{metric.label}</span><strong>{metric.value}</strong></article>)}
+      </section>
+
+      <section className="admin-section" aria-labelledby="wellness-dashboard-title">
+        <div className="admin-section-heading"><div><p>Wellness hoy</p><h2 id="wellness-dashboard-title">Capacidad y accesos</h2></div><Link href="/admin/experiencias">Abrir experiencias →</Link></div>
+        {!wellness.capacityConfigured ? <div className="admin-notice admin-notice--warning" role="status"><strong>Capacidad wellness pendiente de configurar.</strong><span>No se publica ni presume disponibilidad hasta definir el aforo de las franjas.</span></div> : null}
+        <div className="admin-wellness-summary">
+          <article><span>Circuitos hoy</span><strong>{wellness.circuitCount}</strong></article>
+          <article><span>Pases Relax Día hoy</span><strong>{wellness.dayPassCount}</strong></article>
+          <article><span>Visitantes externos presentes</span><strong>{wellness.externalPresent}</strong></article>
+          <article><span>Huéspedes alojados</span><strong>{wellness.housedGuests}</strong><small>Contador separado; no descuenta cupos externos sin presencia conocida.</small></article>
+        </div>
+        <div className="admin-wellness-slot-panel">
+          <div><strong>Próximo turno wellness</strong><span>{nextWellnessSlot ? `${formatDate(wellnessLocalDate(nextWellnessSlot.startAt))} · ${wellnessLocalTime(nextWellnessSlot.startAt)}–${wellnessLocalTime(nextWellnessSlot.endAt)}` : "Sin franjas próximas configuradas"}</span></div>
+          {wellness.todaySlots.length ? <ul>{wellness.todaySlots.map((slot) => <li key={slot.id}><span>{wellnessLocalTime(slot.startAt)}–{wellnessLocalTime(slot.endAt)}</span><strong>{slot.availableExternal === null ? "Capacidad pendiente" : `${slot.availableExternal} cupos externos disponibles`}</strong></li>)}</ul> : <p>No hay franjas wellness configuradas para hoy.</p>}
+        </div>
       </section>
 
       <section className="admin-section">

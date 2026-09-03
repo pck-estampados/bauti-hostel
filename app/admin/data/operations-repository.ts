@@ -7,6 +7,11 @@ import type {
   ReservationUpdateInput,
   WalkInInput,
 } from "../lib/types";
+import type {
+  WellnessBookingInput,
+  WellnessProductInput,
+  WellnessSlotInput,
+} from "./wellness-types";
 
 export type GuestInput = {
   firstName: string;
@@ -17,6 +22,19 @@ export type GuestInput = {
 };
 
 export type NoteInput = Omit<InternalNote, "id" | "author" | "createdAt" | "isDemo">;
+
+export type WellnessBookingUpdateInput = {
+  bookingId: string;
+  startAt: string;
+  partySize: number;
+  notes?: string;
+};
+
+export type WellnessTransitionInput = {
+  bookingId: string;
+  action: "check_in" | "complete" | "no_show" | "cancel";
+  reason?: string;
+};
 
 export interface OperationsRepository {
   loadSnapshot(): Promise<OperationsState>;
@@ -38,4 +56,9 @@ export interface OperationsRepository {
   voidPayment(paymentId: string, reason: string): Promise<OperationsState>;
   addNote(input: NoteInput): Promise<OperationsState>;
   changeRoomStatus(roomId: string, status: RoomStatus, reason?: string): Promise<OperationsState>;
+  saveWellnessProduct(input: WellnessProductInput): Promise<OperationsState>;
+  saveWellnessSlot(input: WellnessSlotInput): Promise<OperationsState>;
+  createWellnessBooking(input: WellnessBookingInput): Promise<OperationsState>;
+  updateWellnessBooking(input: WellnessBookingUpdateInput): Promise<OperationsState>;
+  transitionWellnessBooking(input: WellnessTransitionInput): Promise<OperationsState>;
 }

@@ -58,4 +58,19 @@ export class DemoOperationsRepository implements OperationsRepository {
   async changeRoomStatus(roomId: string, status: Parameters<OperationsRepository["changeRoomStatus"]>[1]) {
     this.state = setRoomStatus(this.state, roomId, status, this.actor); return this.loadSnapshot();
   }
+  async saveWellnessProduct(): Promise<OperationsState> {
+    throw new Error("La operación wellness sólo está disponible con datos reales.");
+  }
+  async saveWellnessSlot(): Promise<OperationsState> {
+    throw new Error("La operación wellness sólo está disponible con datos reales.");
+  }
+  async createWellnessBooking(): Promise<OperationsState> {
+    throw new Error("La operación wellness sólo está disponible con datos reales.");
+  }
+  async updateWellnessBooking(): Promise<OperationsState> {
+    throw new Error("La operación wellness sólo está disponible con datos reales.");
+  }
+  async transitionWellnessBooking(): Promise<OperationsState> {
+    throw new Error("La operación wellness sólo está disponible con datos reales.");
+  }
 }

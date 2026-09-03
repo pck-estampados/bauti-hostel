@@ -13,6 +13,14 @@ import type {
   Reservation,
   Room,
 } from "../lib/types";
+import type {
+  WellnessBooking,
+  WellnessEvent,
+  WellnessPolicyRules,
+  WellnessPricingRules,
+  WellnessProduct,
+  WellnessSlot,
+} from "./wellness-types";
 import type { OperationsRepository } from "./operations-repository";
 import { OperationsError } from "./operations-error";
 import {
@@ -27,6 +35,13 @@ import {
   uuidSchema,
   walkInInputSchema,
 } from "./validation";
+import {
+  wellnessBookingInputSchema,
+  wellnessBookingUpdateSchema,
+  wellnessProductInputSchema,
+  wellnessSlotInputSchema,
+  wellnessTransitionSchema,
+} from "./wellness-validation";
 
 type RoomRow = {
   id: string; room_type_id: string | null; code: string; display_name: string; capacity: number;
@@ -49,12 +64,40 @@ type ReservationRow = {
 };
 type FinancialRow = { reservation_id: string; paid_total: number; balance: number };
 type PaymentRow = {
-  id: string; reservation_id: string; guest_id: string | null; amount: number;
+  id: string; reservation_id: string | null; financial_reference_id: string | null;
+  guest_id: string | null; amount: number;
   currency: "ARS"; direction: Payment["direction"]; status: Payment["status"];
   method: Payment["method"]; reference: string | null; note: string | null;
   occurred_at: string; created_by: string; voided_at: string | null;
   voided_by: string | null; void_reason: string | null;
   created_by_profile: Array<{ display_name: string | null }> | null;
+};
+type WellnessProductRow = {
+  id: string; code: string; name: string; product_type: WellnessProduct["productType"];
+  description: string | null; active: boolean; sales_enabled: boolean; duration_minutes: number;
+  currency: "ARS"; pricing_rules: WellnessPricingRules; policy_rules: WellnessPolicyRules;
+  instructions: string | null; updated_at: string;
+};
+type WellnessSlotRow = {
+  id: string; start_at: string; end_at: string; capacity_limit: number | null;
+  external_capacity_limit: number | null; guest_buffer: number; booked_external: number;
+  available_external: number | null; sales_enabled: boolean; status: WellnessSlot["status"];
+};
+type WellnessSlotNoteRow = { id: string; notes: string | null };
+type WellnessBookingRow = {
+  id: string; code: string; financial_reference_id: string; guest_id: string; product_id: string;
+  start_at: string; end_at: string; party_size: number; capacity_units: number;
+  source: WellnessBooking["source"]; status: WellnessBooking["status"];
+  settlement_type: WellnessBooking["settlementType"]; price_snapshot: Record<string, unknown>;
+  policy_snapshot: Record<string, unknown>; total: number; currency: "ARS"; notes: string | null;
+  actual_check_in_at: string | null; actual_end_at: string | null; cancelled_at: string | null;
+  cancellation_reason: string | null; created_at: string;
+};
+type WellnessBookingFinancialRow = { booking_id: string; amount_paid: number; balance_due: number };
+type WellnessBookingSlotRow = { booking_id: string; slot_id: string };
+type WellnessEventRow = {
+  id: number; booking_id: string; event_type: WellnessEvent["eventType"];
+  actor_id: string | null; metadata: Record<string, unknown>; created_at: string;
 };
 type NoteRow = {
   id: string; entity_type: InternalNote["entityType"]; entity_id: string | null;
@@ -107,6 +150,32 @@ function assertNoError(error: { code?: string; message: string } | null, fallbac
     INVALID_ROOM_STATUS_TRANSITION: "Ese cambio de estado no respeta el flujo operativo de la habitación.",
     OCCUPIED_ROOM_STATUS_LOCKED: "Una habitación ocupada sólo puede liberarse mediante check-out.",
     INVALID_GUEST: "Revisá los datos básicos del huésped.",
+    INVALID_WELLNESS_PRODUCT: "Revisá los datos del producto wellness.",
+    INVALID_WELLNESS_PRODUCT_RULES: "Revisá precios, duración y reglas del producto wellness.",
+    PRODUCT_TYPE_HAS_EXISTING_BOOKINGS: "No se puede cambiar el tipo de un producto que ya tiene reservas.",
+    INVALID_WELLNESS_SLOT: "Revisá los datos de la franja wellness.",
+    INVALID_WELLNESS_CAPACITY: "La capacidad configurada no es válida.",
+    INVALID_WELLNESS_BOOKING: "Revisá los datos de la reserva wellness.",
+    INVALID_PARTY_SIZE: "La cantidad de visitantes no es válida.",
+    INVALID_WELLNESS_TRANSITION: "La acción solicitada no es válida.",
+    PRICE_CONFIGURATION_REQUIRED: "El producto necesita una tarifa válida antes de venderse.",
+    WELLNESS_PRODUCT_CODE_EXISTS: "Ya existe un producto wellness con ese código.",
+    WELLNESS_SLOT_EXISTS: "Ya existe una franja wellness para ese horario.",
+    WELLNESS_PRODUCT_NOT_SELLABLE: "El producto wellness no está habilitado para la venta.",
+    WELLNESS_CAPACITY_NOT_CONFIGURED: "La capacidad wellness todavía no está configurada.",
+    WELLNESS_REQUIRED_SLOTS_MISSING: "Faltan franjas habilitadas para cubrir toda la experiencia.",
+    WELLNESS_CAPACITY_EXCEEDED: "La franja seleccionada ya no tiene capacidad suficiente.",
+    CAPACITY_BELOW_EXISTING_BOOKINGS: "La capacidad no puede quedar por debajo de las reservas existentes.",
+    SLOT_TIME_HAS_EXISTING_BOOKINGS: "No se puede cambiar el horario de una franja con reservas existentes.",
+    WELLNESS_START_MUST_BE_FUTURE: "La reserva wellness debe comenzar en el futuro.",
+    WELLNESS_BOOKING_NOT_EDITABLE: "El estado actual no permite modificar la reserva wellness.",
+    WELLNESS_BOOKING_NOT_CANCELLABLE: "El estado actual no permite cancelar la reserva wellness.",
+    WELLNESS_BOOKING_NOT_CHECKIN_READY: "La reserva wellness no está habilitada para registrar ingreso.",
+    WELLNESS_BOOKING_NOT_COMPLETABLE: "La reserva wellness todavía no puede finalizarse.",
+    WELLNESS_BOOKING_NOT_NO_SHOW_READY: "La reserva wellness todavía no puede marcarse como no-show.",
+    PRICE_CHANGE_REQUIRES_PAYMENT_ADJUSTMENT: "La nueva fecha aplica otra tarifa y requiere ajustar el pago.",
+    CLUB_RELAX_NOT_AVAILABLE: "Club Relax todavía no está habilitado para reservas.",
+    WELLNESS_PAYMENT_VOID_REQUIRES_CANCELLATION: "Los pagos wellness se conservan; cualquier ajuste debe registrarse por separado.",
   };
   if (error.message.includes("ROOM_INVENTORY_INCOMPLETE")) {
     throw new OperationsError("La habitación necesita tipo, tarifa y capacidad de camas válidos.", 422, "ROOM_INVENTORY_INCOMPLETE");
@@ -117,14 +186,38 @@ function assertNoError(error: { code?: string; message: string } | null, fallbac
     ROOM_NOT_FOUND: "No se encontró la habitación.",
     ROOM_ASSIGNMENT_REQUIRED: "La reserva no tiene una habitación asignada.",
     PAYMENT_NOT_FOUND: "No se encontró el pago.",
+    WELLNESS_PRODUCT_NOT_FOUND: "No se encontró el producto wellness.",
+    WELLNESS_SLOT_NOT_FOUND: "No se encontró la franja wellness.",
+    WELLNESS_BOOKING_NOT_FOUND: "No se encontró la reserva wellness.",
   };
   const notFound = Object.entries(notFoundMessages).find(([code]) => error.message.includes(code));
   if (notFound) throw new OperationsError(notFound[1], 404, notFound[0]);
   const known = Object.entries(messages).find(([code]) => error.message.includes(code));
   const code = known?.[0] ?? error.code ?? "OPERATIONS_ERROR";
+  const conflictCodes = [
+    "RATE_LIMITED",
+    "WELLNESS_PRODUCT_CODE_EXISTS",
+    "WELLNESS_SLOT_EXISTS",
+    "WELLNESS_PRODUCT_NOT_SELLABLE",
+    "WELLNESS_CAPACITY_NOT_CONFIGURED",
+    "WELLNESS_REQUIRED_SLOTS_MISSING",
+    "WELLNESS_CAPACITY_EXCEEDED",
+    "CAPACITY_BELOW_EXISTING_BOOKINGS",
+    "SLOT_TIME_HAS_EXISTING_BOOKINGS",
+    "PRODUCT_TYPE_HAS_EXISTING_BOOKINGS",
+    "WELLNESS_BOOKING_NOT_EDITABLE",
+    "WELLNESS_BOOKING_NOT_CANCELLABLE",
+    "WELLNESS_BOOKING_NOT_CHECKIN_READY",
+    "WELLNESS_BOOKING_NOT_COMPLETABLE",
+    "WELLNESS_BOOKING_NOT_NO_SHOW_READY",
+    "PRICE_CHANGE_REQUIRES_PAYMENT_ADJUSTMENT",
+    "CLUB_RELAX_NOT_AVAILABLE",
+    "WELLNESS_PAYMENT_VOID_REQUIRES_CANCELLATION",
+  ];
+  const isConflict = conflictCodes.some((item) => error.message.includes(item));
   const status = error.message.includes("NOT_AUTHORIZED") || error.code === "42501"
     ? 403
-    : error.message.includes("ROOM_NOT_AVAILABLE") || error.code === "23P01" || error.code === "23505"
+    : isConflict || error.message.includes("ROOM_NOT_AVAILABLE") || error.code === "23P01" || error.code === "23505"
       || error.message.includes("RESERVATION_NOT_CHECKIN_READY")
       || error.message.includes("CHECKIN_NOT_TODAY")
       || error.message.includes("ROOM_NOT_CHECKIN_READY")
@@ -184,13 +277,33 @@ export class SupabaseOperationsRepository implements OperationsRepository {
   }
 
   async loadSnapshot(): Promise<OperationsState> {
-    const [roomsResult, guestsResult, reservationsResult, financialsResult, paymentsResult, notesResult, issuesResult, activityResult, roomRatesResult, bedCapacityResult, blocksResult, housekeepingResult] =
+    const [
+      roomsResult,
+      guestsResult,
+      reservationsResult,
+      financialsResult,
+      paymentsResult,
+      notesResult,
+      issuesResult,
+      activityResult,
+      roomRatesResult,
+      bedCapacityResult,
+      blocksResult,
+      housekeepingResult,
+      wellnessProductsResult,
+      wellnessSlotsResult,
+      wellnessSlotNotesResult,
+      wellnessBookingsResult,
+      wellnessFinancialsResult,
+      wellnessAllocationsResult,
+      wellnessEventsResult,
+    ] =
       await Promise.all([
         this.client.from("rooms").select("id, room_type_id, code, display_name, capacity, status, status_note, active").order("code"),
         this.client.from("guests").select("id, first_name, last_name, phone, document_number, email, created_at").is("deleted_at", null).order("created_at", { ascending: false }),
         this.client.from("reservations").select("id, code, primary_guest_id, guest_count, check_in, check_out, expected_arrival, nightly_rate, agreed_total, currency, status, source, external_reference, internal_summary, actual_check_in_at, actual_check_out_at, created_at, created_by, room_assignments(room_id,status)").is("deleted_at", null).order("created_at", { ascending: false }),
         this.client.from("reservation_financials").select("reservation_id, paid_total, balance"),
-        this.client.from("payments").select("id, reservation_id, guest_id, direction, status, amount, currency, method, reference, note, occurred_at, created_by, voided_at, voided_by, void_reason, created_by_profile:profiles!payments_created_by_fkey(display_name)").order("occurred_at", { ascending: false }),
+        this.client.from("payments").select("id, reservation_id, financial_reference_id, guest_id, direction, status, amount, currency, method, reference, note, occurred_at, created_by, voided_at, voided_by, void_reason, created_by_profile:profiles!payments_created_by_fkey(display_name)").order("occurred_at", { ascending: false }),
         this.client.from("internal_notes").select("id, entity_type, entity_id, body, created_by, created_at").is("deleted_at", null).order("created_at", { ascending: false }),
         this.client.from("maintenance_issues").select("id, room_id, area, title, priority, status").order("created_at", { ascending: false }),
         this.client.from("activity_logs").select("id, action, entity_type, entity_id, actor_id, created_at, summary").order("created_at", { ascending: false }).limit(200),
@@ -198,9 +311,34 @@ export class SupabaseOperationsRepository implements OperationsRepository {
         this.client.from("beds").select("room_id,capacity,quantity,active").eq("active", true),
         this.client.from("availability_blocks").select("id,room_id,check_in,check_out,status").eq("status", "active"),
         this.client.from("housekeeping_tasks").select("id,room_id,reservation_id,status,priority,assigned_to,due_at,started_at,completed_at,notes,created_at").not("status", "in", "(completed,cancelled)").order("created_at", { ascending: false }),
+        this.client.from("wellness_products").select("id,code,name,product_type,description,active,sales_enabled,duration_minutes,currency,pricing_rules,policy_rules,instructions,updated_at").order("name"),
+        this.client.from("wellness_slot_availability").select("id,start_at,end_at,capacity_limit,external_capacity_limit,guest_buffer,booked_external,available_external,sales_enabled,status").order("start_at"),
+        this.client.from("wellness_slots").select("id,notes"),
+        this.client.from("wellness_bookings").select("id,code,financial_reference_id,guest_id,product_id,start_at,end_at,party_size,capacity_units,source,status,settlement_type,price_snapshot,policy_snapshot,total,currency,notes,actual_check_in_at,actual_end_at,cancelled_at,cancellation_reason,created_at").order("start_at", { ascending: false }),
+        this.client.from("wellness_booking_financials").select("booking_id,amount_paid,balance_due"),
+        this.client.from("wellness_booking_slots").select("booking_id,slot_id"),
+        this.client.from("wellness_booking_events").select("id,booking_id,event_type,actor_id,metadata,created_at").order("created_at", { ascending: false }).limit(500),
       ]);
 
-    for (const result of [roomsResult, guestsResult, reservationsResult, financialsResult, paymentsResult, notesResult, issuesResult, activityResult, blocksResult, housekeepingResult]) {
+    for (const result of [
+      roomsResult,
+      guestsResult,
+      reservationsResult,
+      financialsResult,
+      paymentsResult,
+      notesResult,
+      issuesResult,
+      activityResult,
+      blocksResult,
+      housekeepingResult,
+      wellnessProductsResult,
+      wellnessSlotsResult,
+      wellnessSlotNotesResult,
+      wellnessBookingsResult,
+      wellnessFinancialsResult,
+      wellnessAllocationsResult,
+      wellnessEventsResult,
+    ]) {
       assertNoError(result.error, "No fue posible cargar la operación del hostel.");
     }
     if (roomRatesResult.error && !isInventoryMigrationPending(roomRatesResult.error)) {
@@ -250,7 +388,56 @@ export class SupabaseOperationsRepository implements OperationsRepository {
         isDemo: false,
       };
     });
-    const reservationGuest = new Map(reservations.map((item) => [item.id, item.primaryGuestId]));
+    const reservationById = new Map(reservations.map((item) => [item.id, item]));
+    const wellnessFinancials = new Map(
+      ((wellnessFinancialsResult.data ?? []) as WellnessBookingFinancialRow[])
+        .map((row) => [row.booking_id, row]),
+    );
+    const wellnessSlotIds = new Map<string, string[]>();
+    for (const allocation of (wellnessAllocationsResult.data ?? []) as WellnessBookingSlotRow[]) {
+      wellnessSlotIds.set(
+        allocation.booking_id,
+        [...(wellnessSlotIds.get(allocation.booking_id) ?? []), allocation.slot_id],
+      );
+    }
+    const wellnessBookings = ((wellnessBookingsResult.data ?? []) as WellnessBookingRow[])
+      .map<WellnessBooking>((row) => {
+        const financial = wellnessFinancials.get(row.id);
+        return {
+          id: row.id,
+          code: row.code,
+          financialReferenceId: row.financial_reference_id,
+          guestId: row.guest_id,
+          productId: row.product_id,
+          startAt: row.start_at,
+          endAt: row.end_at,
+          partySize: row.party_size,
+          capacityUnits: row.capacity_units,
+          source: row.source,
+          status: row.status,
+          settlementType: row.settlement_type,
+          priceSnapshot: row.price_snapshot,
+          policySnapshot: row.policy_snapshot,
+          total: Number(row.total),
+          amountPaid: Number(financial?.amount_paid ?? 0),
+          balanceDue: Number(financial?.balance_due ?? row.total),
+          currency: row.currency,
+          notes: row.notes ?? undefined,
+          actualCheckInAt: row.actual_check_in_at ?? undefined,
+          actualEndAt: row.actual_end_at ?? undefined,
+          cancelledAt: row.cancelled_at ?? undefined,
+          cancellationReason: row.cancellation_reason ?? undefined,
+          createdAt: row.created_at,
+          slotIds: wellnessSlotIds.get(row.id) ?? [],
+        };
+      });
+    const wellnessByFinancialReference = new Map(
+      wellnessBookings.map((booking) => [booking.financialReferenceId, booking]),
+    );
+    const wellnessSlotNotes = new Map(
+      ((wellnessSlotNotesResult.data ?? []) as WellnessSlotNoteRow[])
+        .map((row) => [row.id, row.notes]),
+    );
     const roomRates = new Map(((roomRatesResult.data ?? []) as RoomRateRow[]).map((row) => [row.id, Number(row.base_rate ?? 0)]));
     const bedCapacityByRoom = new Map<string, number>();
     for (const bed of bedCapacityRows) {
@@ -270,17 +457,29 @@ export class SupabaseOperationsRepository implements OperationsRepository {
         createdAt: row.created_at, isDemo: false,
       })),
       reservations,
-      payments: ((paymentsResult.data ?? []) as PaymentRow[]).map<Payment>((row) => ({
-        id: row.id, reservationId: row.reservation_id,
-        guestId: row.guest_id ?? reservationGuest.get(row.reservation_id) ?? "",
-        amount: Number(row.amount), currency: row.currency, direction: row.direction,
-        status: row.status, method: row.method,
-        reference: row.reference ?? undefined, note: row.note ?? undefined,
-        createdAt: row.occurred_at, createdBy: row.created_by,
-        createdByName: row.created_by_profile?.[0]?.display_name ?? undefined,
-        voidedAt: row.voided_at ?? undefined, voidedBy: row.voided_by ?? undefined,
-        voidReason: row.void_reason ?? undefined, isDemo: false,
-      })),
+      payments: ((paymentsResult.data ?? []) as PaymentRow[]).map<Payment>((row) => {
+        const stay = row.reservation_id ? reservationById.get(row.reservation_id) : undefined;
+        const wellness = row.financial_reference_id
+          ? wellnessByFinancialReference.get(row.financial_reference_id)
+          : undefined;
+        return {
+          id: row.id,
+          targetType: row.financial_reference_id ? "wellness" : "stay",
+          targetId: wellness?.id ?? stay?.id ?? row.financial_reference_id ?? row.reservation_id ?? row.id,
+          targetCode: wellness?.code ?? stay?.code ?? "Sin referencia",
+          reservationId: row.reservation_id ?? undefined,
+          financialReferenceId: row.financial_reference_id ?? undefined,
+          wellnessBookingId: wellness?.id,
+          guestId: row.guest_id ?? wellness?.guestId ?? stay?.primaryGuestId,
+          amount: Number(row.amount), currency: row.currency, direction: row.direction,
+          status: row.status, method: row.method,
+          reference: row.reference ?? undefined, note: row.note ?? undefined,
+          createdAt: row.occurred_at, createdBy: row.created_by,
+          createdByName: row.created_by_profile?.[0]?.display_name ?? undefined,
+          voidedAt: row.voided_at ?? undefined, voidedBy: row.voided_by ?? undefined,
+          voidReason: row.void_reason ?? undefined, isDemo: false,
+        };
+      }),
       notes: ((notesResult.data ?? []) as NoteRow[]).map<InternalNote>((row) => ({
         id: row.id, entityType: row.entity_type, entityId: row.entity_id ?? undefined,
         text: row.body, author: row.created_by, createdAt: row.created_at, isDemo: false,
@@ -312,6 +511,43 @@ export class SupabaseOperationsRepository implements OperationsRepository {
         startedAt: row.started_at ?? undefined,
         completedAt: row.completed_at ?? undefined,
         notes: row.notes ?? undefined,
+        createdAt: row.created_at,
+      })),
+      wellnessProducts: ((wellnessProductsResult.data ?? []) as WellnessProductRow[]).map((row) => ({
+        id: row.id,
+        code: row.code,
+        name: row.name,
+        productType: row.product_type,
+        description: row.description ?? undefined,
+        active: row.active,
+        salesEnabled: row.sales_enabled,
+        durationMinutes: row.duration_minutes,
+        currency: row.currency,
+        pricingRules: row.pricing_rules,
+        policyRules: row.policy_rules,
+        instructions: row.instructions ?? undefined,
+        updatedAt: row.updated_at,
+      })),
+      wellnessSlots: ((wellnessSlotsResult.data ?? []) as WellnessSlotRow[]).map((row) => ({
+        id: row.id,
+        startAt: row.start_at,
+        endAt: row.end_at,
+        capacityLimit: row.capacity_limit,
+        externalCapacityLimit: row.external_capacity_limit,
+        guestBuffer: row.guest_buffer,
+        bookedExternal: row.booked_external,
+        availableExternal: row.available_external,
+        salesEnabled: row.sales_enabled,
+        status: row.status,
+        notes: wellnessSlotNotes.get(row.id) ?? undefined,
+      })),
+      wellnessBookings,
+      wellnessEvents: ((wellnessEventsResult.data ?? []) as WellnessEventRow[]).map((row) => ({
+        id: String(row.id),
+        bookingId: row.booking_id,
+        eventType: row.event_type,
+        actorId: row.actor_id ?? undefined,
+        metadata: row.metadata,
         createdAt: row.created_at,
       })),
     };
@@ -436,6 +672,57 @@ export class SupabaseOperationsRepository implements OperationsRepository {
       p_room_id: payload.roomId, p_status: payload.status, p_reason: payload.reason || null,
     });
     assertNoError(error, "No fue posible actualizar la habitación.");
+    return this.loadSnapshot();
+  }
+
+  async saveWellnessProduct(input: Parameters<OperationsRepository["saveWellnessProduct"]>[0]) {
+    const payload = wellnessProductInputSchema.parse(input);
+    const { id, ...product } = payload;
+    const { error } = await this.client.rpc("save_wellness_product", {
+      p_product_id: id ?? null,
+      p_payload: product,
+    });
+    assertNoError(error, "No fue posible guardar el producto wellness.");
+    return this.loadSnapshot();
+  }
+
+  async saveWellnessSlot(input: Parameters<OperationsRepository["saveWellnessSlot"]>[0]) {
+    const payload = wellnessSlotInputSchema.parse(input);
+    const { id, ...slot } = payload;
+    const { error } = await this.client.rpc("save_wellness_slot", {
+      p_slot_id: id ?? null,
+      p_payload: slot,
+    });
+    assertNoError(error, "No fue posible guardar la franja wellness.");
+    return this.loadSnapshot();
+  }
+
+  async createWellnessBooking(input: Parameters<OperationsRepository["createWellnessBooking"]>[0]) {
+    const payload = wellnessBookingInputSchema.parse(input);
+    const { error } = await this.client.rpc("create_wellness_booking", { p_payload: payload });
+    assertNoError(error, "No fue posible crear la reserva wellness.");
+    return this.loadSnapshot();
+  }
+
+  async updateWellnessBooking(input: Parameters<OperationsRepository["updateWellnessBooking"]>[0]) {
+    const payload = wellnessBookingUpdateSchema.parse(input);
+    const { bookingId, ...booking } = payload;
+    const { error } = await this.client.rpc("update_wellness_booking", {
+      p_booking_id: bookingId,
+      p_payload: booking,
+    });
+    assertNoError(error, "No fue posible actualizar la reserva wellness.");
+    return this.loadSnapshot();
+  }
+
+  async transitionWellnessBooking(input: Parameters<OperationsRepository["transitionWellnessBooking"]>[0]) {
+    const payload = wellnessTransitionSchema.parse(input);
+    const { error } = await this.client.rpc("transition_wellness_booking", {
+      p_booking_id: payload.bookingId,
+      p_action: payload.action,
+      p_reason: payload.reason || null,
+    });
+    assertNoError(error, "No fue posible actualizar el estado de la reserva wellness.");
     return this.loadSnapshot();
   }
 }

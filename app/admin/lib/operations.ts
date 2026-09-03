@@ -81,7 +81,7 @@ export function createWalkIn(state: OperationsState, input: WalkInInput, actor =
     rooms: state.rooms.map((item) => item.id === room.id ? { ...item, status: "occupied", statusNote: undefined } : item),
     guests: selectedGuest ? state.guests : [guest, ...state.guests],
     reservations: [reservation, ...state.reservations],
-    payments: paid > 0 ? [{ id: id("payment"), reservationId, guestId, amount: paid, currency: "ARS", direction: "charge", status: "posted", method: input.paymentMethod, createdAt, createdBy: actor, createdByName: actor, isDemo: true }, ...state.payments] : state.payments,
+    payments: paid > 0 ? [{ id: id("payment"), targetType: "stay", targetId: reservationId, targetCode: reservation.code, reservationId, guestId, amount: paid, currency: "ARS", direction: "charge", status: "posted", method: input.paymentMethod, createdAt, createdBy: actor, createdByName: actor, isDemo: true }, ...state.payments] : state.payments,
     notes: input.notes?.trim() ? [{ id: id("note"), entityType: "reservation", entityId: reservationId, text: input.notes.trim(), author: actor, createdAt, isDemo: true }, ...state.notes] : state.notes,
     audit: [{ id: id("audit"), action: "walk_in.created_and_checked_in", entityType: "reservation", entityId: reservationId, actor, createdAt, summary: `Ingreso directo registrado en ${room.displayName}.`, isDemo: true }, ...state.audit],
   };
@@ -98,19 +98,20 @@ export function createManualReservation(state: OperationsState, input: ManualRes
   if (input.guestId && !selectedGuest) throw new Error("No se encontró el huésped seleccionado.");
   const guestId = selectedGuest?.id ?? id("guest");
   const reservationId = id("reservation");
+  const reservationCode = `RES-${Date.now().toString().slice(-6)}`;
 
   return {
     ...state,
     rooms: state.rooms.map((item) => item.id === room.id ? { ...item, status: "reserved" } : item),
     guests: selectedGuest ? state.guests : [{ id: guestId, firstName: input.firstName.trim(), lastName: input.lastName.trim(), phone: input.phone.trim(), document: input.document?.trim() || undefined, email: input.email?.trim() || undefined, createdAt, isDemo: true }, ...state.guests],
     reservations: [{
-      id: reservationId, code: `RES-${Date.now().toString().slice(-6)}`, primaryGuestId: guestId, roomId: room.id,
+      id: reservationId, code: reservationCode, primaryGuestId: guestId, roomId: room.id,
       guestCount: input.guestCount, checkIn: input.checkIn, checkOut: input.checkOut, expectedArrival: input.expectedArrival,
       nightlyRate: input.nightlyRate, total, currency: "ARS", paid, balance: Math.max(total - paid, 0), status: "confirmed",
       paymentStatus: paymentStatus(total, paid), source: input.source, externalReference: input.externalReference?.trim() || undefined, notes: input.notes?.trim() || undefined,
       createdAt, createdBy: actor, isDemo: true,
     }, ...state.reservations],
-    payments: paid > 0 ? [{ id: id("payment"), reservationId, guestId, amount: paid, currency: "ARS", direction: "charge", status: "posted", method: input.paymentMethod, createdAt, createdBy: actor, createdByName: actor, isDemo: true }, ...state.payments] : state.payments,
+    payments: paid > 0 ? [{ id: id("payment"), targetType: "stay", targetId: reservationId, targetCode: reservationCode, reservationId, guestId, amount: paid, currency: "ARS", direction: "charge", status: "posted", method: input.paymentMethod, createdAt, createdBy: actor, createdByName: actor, isDemo: true }, ...state.payments] : state.payments,
     audit: [{ id: id("audit"), action: "reservation.created", entityType: "reservation", entityId: reservationId, actor, createdAt, summary: `Reserva manual creada para ${room.displayName}.`, isDemo: true }, ...state.audit],
   };
 }
@@ -263,6 +264,9 @@ export function registerPayment(state: OperationsState, input: { reservationId: 
   const createdAt = nowIso();
   const payment: Payment = {
     id: id("payment"),
+    targetType: "stay",
+    targetId: reservation.id,
+    targetCode: reservation.code,
     reservationId: reservation.id,
     guestId: reservation.primaryGuestId,
     amount: input.amount,

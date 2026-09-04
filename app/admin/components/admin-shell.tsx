@@ -17,6 +17,7 @@ const navigation = [
   { href: "/admin/huespedes/actuales", label: "Huéspedes alojados", code: "HU" },
   { href: "/admin/reservas", label: "Reservas", code: "RE" },
   { href: "/admin/calendario", label: "Calendario", code: "CA" },
+  { href: "/admin/tarifas", label: "Tarifas", code: "TA" },
   { href: "/admin/caja", label: "Caja", code: "CJ" },
   { href: "/admin/notas", label: "Notas internas", code: "NO" },
   { href: "/admin/galeria", label: "Galería", code: "GA" },
@@ -31,6 +32,7 @@ function AdminNavigation({ mobile = false }: { mobile?: boolean }) {
     "/admin/experiencias": "experiences.read", "/admin/habitaciones": "rooms.read",
     "/admin/huespedes/actuales": "guests.read", "/admin/reservas": "reservations.read",
     "/admin/calendario": "reservations.read", "/admin/caja": "payments.read",
+    "/admin/tarifas": "rates.read",
     "/admin/notas": "notes.read", "/admin/galeria": "media.read", "/admin/configuracion": "settings.read",
   };
   return (

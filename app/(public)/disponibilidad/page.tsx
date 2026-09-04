@@ -11,6 +11,8 @@ import {
 } from "@/app/lib/availability";
 import { getPublicSiteContent } from "@/app/lib/public-site-content";
 import { generalWhatsappMessage, whatsappHref } from "@/app/lib/site";
+import { publicLodgingAvailability } from "@/app/lib/lodging-server";
+import { LodgingResults } from "@/app/components/lodging-results";
 
 export const metadata: Metadata = {
   title: "Consultar disponibilidad",
@@ -26,6 +28,8 @@ export default async function AvailabilityPage({
   const content = await getPublicSiteContent();
   const datesAreValid = isValidAvailabilityRequest(request);
   const totalGuests = request.adults + request.children;
+  const lodgingRequest = { checkIn: request.checkin, checkOut: request.checkout, adults: request.adults, children: request.children };
+  const lodging = datesAreValid ? await publicLodgingAvailability(lodgingRequest) : null;
   const message = datesAreValid
     ? buildAvailabilityWhatsappMessage(request, content.name)
     : generalWhatsappMessage(content.name);
@@ -35,8 +39,8 @@ export default async function AvailabilityPage({
       <PageHero
         eyebrow="Disponibilidad"
         title="Consultá tu estadía"
-        description="Revisá tus fechas y envianos la consulta por WhatsApp. Te responderemos si existe una opción y cuál es la tarifa aplicable."
-        aside="Respuesta por WhatsApp"
+        description="Consultá categorías y tarifas para tus fechas. También podés comunicarte por WhatsApp; una consulta o hold temporal no confirma una reserva."
+        aside="Alojamiento por categoría"
       />
       <section className="section page-section availability-page">
         <div className="shell availability-result-grid">
@@ -77,6 +81,7 @@ export default async function AvailabilityPage({
           </aside>
         </div>
       </section>
+      {lodging && <LodgingResults request={lodgingRequest} categories={lodging.categories} ready={lodging.ready} />}
     </main>
   );
 }

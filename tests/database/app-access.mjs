@@ -34,7 +34,7 @@ export async function verifyStaffApp(url, key, credential) {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
     assert.equal(ready, true, "local built app ready");
-    for (const route of ["/admin", "/admin/configuracion", "/admin/limpieza"]) {
+    for (const route of ["/admin", "/admin/configuracion", "/admin/limpieza", "/admin/tarifas", "/admin/calendario"]) {
       const response = await request(route, false);
       assert.ok([303,307,308].includes(response.status), "anonymous staff route redirects");
       assert.ok(response.headers.get("location")?.includes("/acceso-interno"), "redirect to staff access");
@@ -63,6 +63,12 @@ export async function verifyStaffApp(url, key, credential) {
     const html = await publicResponse.text();
     assert.ok(html.includes("15:00") && html.includes("11:00") && html.includes("12:00") && html.includes("No es automática"));
     assert.ok(!/60\.000|priceRange|TEST-DOCUMENT|PRIVATE-ROOM/.test(html), "no legacy tariff or private fields public");
+    if (process.env.T2_BROWSER_TESTS === "1") {
+      const { verifyLodgingBrowser } = await import("./lodging-browser.mjs");
+      await verifyLodgingBrowser(base, jar);
+    }
+    const { verifyLodgingApp } = await import("./lodging-app.mjs");
+    await verifyLodgingApp(request, base);
     // A real JWT must pick up current DB roles/status, not stale token metadata.
     const user = "10000000-0000-4000-8000-000000000001";
     const setRole = (code) => {
@@ -71,11 +77,14 @@ export async function verifyStaffApp(url, key, credential) {
         insert into public.user_roles(user_id,role_id) select '${user}',id from public.roles where code='${code}';`);
     };
     setRole("housekeeping");
+    assert.equal((await request("/api/admin/lodging")).status,403,"cleaning rates denied");
+    assert.ok((await (await request("/admin/tarifas")).text()).includes("Tu rol no tiene acceso"));
     assert.equal((await request("/api/admin/configuration")).status, 403, "cleaning configuration denied");
     const cleaning = await request("/admin/limpieza");
     assert.equal(cleaning.status, 200);
     assert.ok(!/TEST-DOCUMENT|TEST-FIRST|TEST-SENSITIVE-NOTE|TEST-HOUSEKEEPING/.test(await cleaning.text()), "cleaning SSR contains no unnecessary guest or private note data");
     setRole("bar");
+    assert.equal((await request("/api/admin/lodging")).status,403,"bar rates denied");
     assert.equal((await request("/api/admin/configuration")).status, 403, "Bar configuration denied");
     assert.equal((await request("/api/admin/operations")).status, 403, "Bar operations denied");
     assert.ok((await (await request("/admin")).text()).includes("Rol preparado"), "Bar dormant UI");

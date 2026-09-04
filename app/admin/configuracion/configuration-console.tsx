@@ -186,7 +186,7 @@ export function ConfigurationConsole({ currentUser, initialSnapshot, mode }: Pro
       publicName: value(form, "publicName"),
       description: value(form, "description"),
       defaultCapacity: Number(value(form, "defaultCapacity")),
-      baseRate: Number(value(form, "baseRate")),
+      baseRate: value(form, "baseRate") ? Number(value(form, "baseRate")) : null,
       active: checked(form, "active"),
     }, roomType ? "Tipo de habitación actualizado." : "Tipo de habitación creado.");
   }
@@ -258,7 +258,7 @@ export function ConfigurationConsole({ currentUser, initialSnapshot, mode }: Pro
   const schedules = state.settings.schedules?.value;
   const price = state.settings.price?.value;
   const policies = state.settings.policies?.value;
-  const configuredRoomTypes = state.roomTypes.filter((item) => item.active && item.publicName && item.defaultCapacity > 0 && Number(item.baseRate) > 0);
+  const configuredRoomTypes = state.roomTypes.filter((item) => item.active && item.publicName && item.defaultCapacity > 0);
   const configuredRooms = state.rooms.filter((room) => room.active && room.roomTypeId && room.capacity > 0 && configuredRoomTypes.some((type) => type.id === room.roomTypeId));
   const capacitiesConfigured = configuredRooms.length > 0 && configuredRooms.every((room) => {
     const capacity = state.beds
@@ -394,7 +394,7 @@ export function ConfigurationConsole({ currentUser, initialSnapshot, mode }: Pro
                     <label>Nombre interno<input defaultValue={roomType.internalName} name="internalName" required /></label>
                     <label>Nombre público<input defaultValue={roomType.publicName} name="publicName" required /></label>
                     <label>Capacidad estándar<input defaultValue={roomType.defaultCapacity} max="30" min="1" name="defaultCapacity" required type="number" /></label>
-                    <label>Tarifa base (ARS)<input defaultValue={roomType.baseRate ?? ""} min="1" name="baseRate" required step="1" type="number" /></label>
+                    <label>Tarifa manual legacy (opcional, no cotiza noches)<input defaultValue={roomType.baseRate ?? ""} min="1" name="baseRate" step="1" type="number" /></label>
                     <label className="admin-check-field"><input defaultChecked={roomType.active} name="active" type="checkbox" /> Tipo activo</label>
                     <label className="admin-field--full">Descripción<textarea defaultValue={roomType.description} name="description" /></label>
                   </div>
@@ -412,7 +412,7 @@ export function ConfigurationConsole({ currentUser, initialSnapshot, mode }: Pro
               <label>Nombre interno<input name="internalName" required /></label>
               <label>Nombre público<input name="publicName" required /></label>
               <label>Capacidad estándar<input max="30" min="1" name="defaultCapacity" required type="number" /></label>
-              <label>Tarifa base (ARS)<input min="1" name="baseRate" required step="1" type="number" /></label>
+              <label>Tarifa manual legacy (opcional, no cotiza noches)<input min="1" name="baseRate" step="1" type="number" /></label>
               <label className="admin-check-field"><input defaultChecked name="active" type="checkbox" /> Crear activo</label>
               <label className="admin-field--full">Descripción<textarea name="description" /></label>
             </div>

@@ -54,7 +54,7 @@ export const managedRoomTypeCreateSchema = z.object({
   publicName: required(2, 120),
   description: optional(500),
   defaultCapacity: z.coerce.number().int().min(1).max(30),
-  baseRate: z.coerce.number().positive().max(100_000_000),
+  baseRate: z.coerce.number().positive().max(100_000_000).nullable(),
   active: z.boolean(),
 });
 

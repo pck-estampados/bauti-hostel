@@ -3,12 +3,12 @@ begin read only;
 do $$
 declare t record; n bigint;
 begin
-  if (select count(*) from supabase_migrations.schema_migrations) <> 14 then
-    raise exception 'Expected 14 applied repository migrations';
+  if (select count(*) from supabase_migrations.schema_migrations) <> 15 then
+    raise exception 'Expected 15 applied repository migrations';
   end if;
   if (select count(*) from public.roles) <> 6
-    or (select count(*) from public.permissions) <> 26
-    or (select count(*) from public.role_permissions) <> 68
+    or (select count(*) from public.permissions) <> 30
+    or (select count(*) from public.role_permissions) <> 76
     or (select count(*) from public.room_services) <> 6 then
     raise exception 'Structural seed mismatch';
   end if;
@@ -22,7 +22,7 @@ begin
     execute format('select count(*) from public.%I', t.tablename) into n;
     if n <> 0 then raise exception 'Bootstrap contains non-structural rows: %', t.tablename; end if;
   end loop;
-  if (select count(*) from public.settings) <> 3 then raise exception 'Expected three canonical settings'; end if;
+  if (select count(*) from public.settings) <> 4 then raise exception 'Expected four structural settings'; end if;
   if exists (select 1 from public.audit_logs where actor_id is not null
     or table_name not in ('role_permissions','roles','settings')) then
     raise exception 'Unexpected bootstrap audit actor or table';
@@ -35,12 +35,12 @@ begin
     or exists (select 1 from private.operation_rate_limits) then
     raise exception 'Bootstrap contains test users, objects or rate-limit records';
   end if;
-  if (select count(*) from pg_tables where schemaname='public') <> 31
+  if (select count(*) from pg_tables where schemaname='public') <> 34
     or exists (select 1 from pg_tables where schemaname='public' and not rowsecurity) then
     raise exception 'Application table/RLS mismatch';
   end if;
   if (select count(*) from pg_constraint c join pg_namespace n on n.oid=c.connamespace
-    where n.nspname in ('public','private') and c.contype='x') <> 2 then
+    where n.nspname in ('public','private') and c.contype='x') <> 3 then
     raise exception 'Missing exclusion constraints';
   end if;
   if exists (select 1 from pg_extension e join pg_namespace n on n.oid=e.extnamespace
@@ -90,5 +90,5 @@ begin
   end if;
 end;
 $$;
-select 'PASS: 14 migrations; structural seeds 6/26/68/6 plus 3 canonical settings; 31 public tables with RLS; business/auth/media empty; critical grants/constraints/bucket';
+select 'PASS: 15 migrations; structural seeds 6/30/76/6 plus 4 settings; 34 public tables with RLS; business/auth/media empty; critical grants/constraints/bucket';
 rollback;

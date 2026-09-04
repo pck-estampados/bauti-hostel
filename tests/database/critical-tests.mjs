@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import { root, sql, sqlAsync, reset, localPublicApi } from "../../scripts/database-local.mjs";
+import { testLodging, testLodgingRaces } from "./lodging-tests.mjs";
 
 const fixtures = readFileSync(join(root, "tests/database/fixtures.sql"), "utf8");
 const uid = (n) => `10000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -200,7 +201,7 @@ function coreModelTests() {
     update public.rooms set cleaning_note='Instrucción mínima',status_note='PRIVATE-STATUS',
       internal_notes='PRIVATE-ROOM',status='pending_cleaning' where id='${room}';
   `];
-  for (const [role, count] of [["owner",26],["admin",24],["housekeeping",2],["bar",0],["reception",13],["maintenance",3]]) {
+  for (const [role, count] of [["owner",30],["admin",28],["housekeeping",2],["bar",0],["reception",13],["maintenance",3]]) {
     sections.push(check(`(select count(*) from public.role_permissions rp join public.roles r on r.id=rp.role_id where r.code='${role}')=${count}`, `T1 role ${role} exact permissions`));
   }
   sections.push(identity(41), check("private.is_active_staff()", "cleaning active staff"));
@@ -315,6 +316,7 @@ export async function testDatabase() {
   aclTests();
   coreModelTests();
   functionalTests(); // Entire fixture and all role/permission changes ROLLBACK.
+  testLodging();
   console.log(sql(readFileSync(join(root, "tests/database/bootstrap-schema.sql"), "utf8")));
   // Cross-connection tests require committed LOCAL fixtures. Always reset in
   // finally; a failed reset is a failure, never reported as a clean bootstrap.
@@ -330,6 +332,7 @@ export async function testDatabase() {
     assert.equal(sql("select count(*) from public.room_assignments;"), "1");
     assert.equal(sql("select count(*) from public.wellness_bookings;"), "1");
     assert.equal(sql("select count(*) from public.payments;"), "1");
+    await testLodgingRaces();
   } finally {
     await reset();
   }

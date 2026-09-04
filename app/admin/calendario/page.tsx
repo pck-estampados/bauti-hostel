@@ -8,6 +8,7 @@ import { overlappingSlots, wellnessLocalDate, wellnessLocalTime } from "../data/
 import type { WellnessBookingStatus } from "../data/wellness-types";
 import { hostelDate } from "../lib/demo-data";
 import { formatGuestName } from "../lib/operations";
+import { LodgingAvailabilityConsole } from "./lodging-availability-console";
 
 const sourceLabels: Record<string, string> = {
   web: "Web directa", whatsapp: "WhatsApp", phone: "Teléfono", walk_in: "Walk-in",
@@ -60,6 +61,7 @@ export default function OccupancyCalendarPage() {
         <label className="admin-calendar-start">Comenzar en<input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></label>
         <label className="admin-calendar-start">Mostrar<select value={view} onChange={(event) => setView(event.target.value as CalendarView)}><option value="stays">Estadías</option><option value="wellness">Wellness</option><option value="all">Todo</option></select></label>
       </div>
+      <LodgingAvailabilityConsole />
 
       {showStays ? <section aria-labelledby="stay-calendar-title">
         <div className="admin-section-heading admin-calendar-heading"><div><p>Estadías</p><h2 id="stay-calendar-title">Ocupación por habitación</h2></div></div>
@@ -72,7 +74,7 @@ export default function OccupancyCalendarPage() {
                 {state.rooms.map((room) => <div className="admin-calendar__row" key={room.id} style={{ gridColumn: `1 / span ${days.length + 1}`, gridTemplateColumns: `minmax(150px, 1.2fr) repeat(${days.length}, minmax(82px, 1fr))` }}><div className="admin-calendar__room"><strong>{room.displayName}</strong><span>{room.code} · cap. {room.capacity}</span></div>{days.map((day) => {
                   const reservation = reservationsForRoom(room.id).find((item) => item.checkIn <= day && item.checkOut > day);
                   const guest = state.guests.find((item) => item.id === reservation?.primaryGuestId);
-                  return <div className={reservation ? "admin-calendar__cell admin-calendar__cell--occupied" : "admin-calendar__cell"} key={day}>{reservation ? <Link href={`/admin/reservas/${reservation.id}/editar`} aria-label={`${room.displayName}: ${guest ? formatGuestName(guest.firstName, guest.lastName) : reservation.code}, ${reservationStatusLabel(reservation.status)}`}><strong>{guest?.firstName ?? reservation.code}</strong><span>{sourceLabels[reservation.source] ?? reservation.source}</span></Link> : <span>Libre</span>}</div>;
+                  return <div className={reservation ? "admin-calendar__cell admin-calendar__cell--occupied" : "admin-calendar__cell"} key={day}>{reservation ? <Link href={`/admin/reservas/${reservation.id}/editar`} aria-label={`${room.displayName}: ${guest ? formatGuestName(guest.firstName, guest.lastName) : reservation.code}, ${reservationStatusLabel(reservation.status)}`}><strong>{guest?.firstName ?? reservation.code}</strong><span>{sourceLabels[reservation.source] ?? reservation.source}</span></Link> : <span>Sin reserva</span>}</div>;
                 })}</div>)}
               </div>
             </div>

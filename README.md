@@ -28,7 +28,7 @@ adaptador real de Supabase LOCAL; no implica desplegar ni conectarse al remoto.
 ```powershell
 npm run app:local -- build # npm run build, con Supabase local
 npm run app:local -- test  # npm test, con Supabase local
-npm run db:local -- replay # reset local + 14 migraciones + pruebas + limpieza
+npm run db:local -- replay # reset local + 15 migraciones + pruebas + limpieza
 npm run lint      # análisis estático
 npm run typecheck
 ```
@@ -53,13 +53,20 @@ El Handoff Maestro V1.27 es la fuente funcional. La configuración canónica,
 contradicciones y decisiones T1 están en `docs/T1-core-model-security-report.md`.
 Staging se difiere por decisión de proyecto hasta antes de T9: sin Supabase Pro,
 proyectos/branches remotos ni Vercel en T1. T1–T8 no autorizan cambios productivos.
-LOCAL COMPLETE no significa PRODUCTION VALIDATED. Las 13 migraciones iniciales
+LOCAL COMPLETE no significa PRODUCTION VALIDATED. Las migraciones versionadas
 son inmutables; toda evolución es una migración nueva.
 
 `room_types` implementa categorías: venta futura por categoría, asignación física
 por `rooms`. El estado de reserva es distinto del financiero. La proyección
 `reservation_lifecycle` mantiene compatibilidad legacy; importes derivados del
-ledger. T2/T3 completarán tarifas y transición de escritores sin duplicar saldos.
+ledger. T2 agrega tarifas nocturnas, disponibilidad y holds reales. T3 completará
+la conversión atómica a reserva y la transición de escritores sin duplicar saldos.
+
+Tarifas: `/admin/tarifas`; disponibilidad y holds: `/admin/calendario` y
+`/disponibilidad`. No hay tarifas, categorías ni habitaciones creadas como seed.
+Domingo ordinario y condiciones/fechas de promociones requieren configuración.
+Detalles, seguridad, pruebas y contrato de conversión T3:
+[`docs/T2-lodging-rates-availability-report.md`](docs/T2-lodging-rates-availability-report.md).
 
 Roles: owner/admin = Gerencia; housekeeping = Limpieza (proyección mínima);
 bar = Barra preparado, sin permisos; reception futuro; maintenance sin ampliar.

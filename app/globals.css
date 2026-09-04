@@ -1336,3 +1336,36 @@ a.contact-card:hover { transform: translateY(-5px); }
   .admin-wellness-transitions .admin-button { width: 100%; }
   .admin-wellness-filter { width: 100%; }
 }
+
+/* T2: scoped lodging controls, preserving the established public design. */
+.admin-lodging-panel { margin: 24px 0; padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--admin-panel); min-width: 0; }
+.admin-lodging-panel h2 { font-size: 1.4rem; margin: 0 0 12px; }
+.admin-lodging-panel h3 { margin: 18px 0 10px; }
+.admin-lodging-panel p, .admin-lodging-panel li { font-size: .9rem; line-height: 1.6; overflow-wrap: anywhere; }
+.admin-lodging-panel label { display: grid; gap: 7px; font-size: .85rem; min-width: 0; }
+.admin-lodging-panel input:not([type=checkbox]), .admin-lodging-panel select, .admin-lodging-panel textarea { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: var(--admin-panel); color: inherit; font: inherit; }
+.admin-lodging-panel input:focus-visible, .admin-lodging-panel select:focus-visible, .admin-lodging-panel textarea:focus-visible, .admin-lodging-panel button:focus-visible, .lodging-results button:focus-visible { outline: 3px solid #626b4c; outline-offset: 3px; }
+.admin-lodging-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; margin: 20px 0; border: 1px solid var(--line); padding: 18px; border-radius: 12px; min-width: 0; }
+.admin-lodging-fields legend { font-size: .85rem; padding: 0 8px; }
+.admin-lodging-wide, .admin-lodging-days { grid-column: 1 / -1; }
+.admin-lodging-days { display: flex; flex-wrap: wrap; gap: 14px; padding: 12px; border: 1px solid var(--line); }
+.admin-lodging-days label, .admin-lodging-panel .admin-lodging-check { display: flex; align-items: center; gap: 8px; }
+.admin-lodging-cards, .lodging-results-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,270px),1fr)); gap: 16px; margin: 20px 0; }
+.admin-lodging-cards article, .lodging-results-grid article { border: 1px solid var(--line); border-radius: 14px; padding: 20px; min-width: 0; overflow-wrap: anywhere; }
+.admin-lodging-cards article form { display: grid; gap: 12px; margin-top: 16px; }
+.admin-lodging-filter { max-width: 360px; margin-top: 18px; }
+.admin-lodging-notice { padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: #f5edde; overflow-wrap: anywhere; }
+.admin-lodging-panel button:disabled, .lodging-results button:disabled { opacity: .5; cursor: not-allowed; }
+.lodging-results { padding-bottom: 64px; }
+.lodging-results > p { max-width: 800px; }
+.lodging-results details { margin: 18px 0; }
+.lodging-results summary { cursor: pointer; }
+.lodging-results button { white-space: normal; }
+.lodging-total { display: block; font-size: 1.5rem; }
+.lodging-total small { display: block; font-size: .85rem; font-weight: normal; }
+.lodging-hold-status { border: 1px solid var(--line); padding: 24px; border-radius: 16px; }
+@media (max-width: 600px) {
+  .admin-lodging-panel { padding: 16px; }
+  .admin-lodging-fields { grid-template-columns: 1fr; padding: 12px; gap: 14px; }
+  .admin-lodging-panel button { white-space: normal; }
+}

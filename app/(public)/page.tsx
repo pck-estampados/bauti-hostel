@@ -31,8 +31,8 @@ export default async function HomePage() {
   const lodgingBusinessJsonLd = {
     "@context": "https://schema.org",
     "@type": "LodgingBusiness",
-    name: brand.publicName,
-    description: brand.descriptor,
+    name: content.name,
+    description: content.descriptor,
     address: {
       "@type": "PostalAddress",
       streetAddress: content.address,
@@ -41,7 +41,6 @@ export default async function HomePage() {
       addressCountry: "AR",
     },
     telephone: content.phone,
-    priceRange: `Desde ARS ${content.basePriceArs.toLocaleString("es-AR")} por habitación/noche`,
     checkinTime: content.checkInFrom,
     checkoutTime: content.checkOutUntil,
   };
@@ -49,7 +48,7 @@ export default async function HomePage() {
     <main>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(lodgingBusinessJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(lodgingBusinessJsonLd).replace(/</g, "\\u003c") }}
       />
 
       <section className="hero">

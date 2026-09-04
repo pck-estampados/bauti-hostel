@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { brand } from "@/app/lib/brand";
-import { formatArs } from "@/app/lib/site";
 import type { PublicSiteContent } from "@/app/lib/public-site-types";
 
 export function AccommodationInquiry({
@@ -34,9 +33,9 @@ export function AccommodationInquiry({
         </div>
         <div className="accommodation-inquiry__footer">
           <p>
-            <small>Tarifa de referencia</small>
-            <strong>Desde {formatArs(content.basePriceArs)} por habitación/noche</strong>
-            <span>El valor final depende de la habitación y las fechas.</span>
+            <small>Tarifa a consultar</small>
+            <strong>Consultá la tarifa según categoría y fechas</strong>
+            <span>La consulta no confirma disponibilidad ni una reserva.</span>
           </p>
           <Link className="button button--primary" href="/reservar">
             Consultar disponibilidad

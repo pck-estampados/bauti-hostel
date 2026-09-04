@@ -11,6 +11,7 @@ import type {
 } from "../data/configuration-types";
 import { AdminPageHeader, EmptyState, formatCurrency, roomStatusLabel, StatusPill } from "../components/ui";
 import { allowedRoomStatusTransitions } from "../data/stay-operations-core";
+import { CORE_GENERAL, CORE_POLICIES, CORE_SCHEDULES, ROLE_LABELS } from "@/app/lib/core-settings";
 
 type CurrentUser = {
   id: string;
@@ -21,7 +22,6 @@ type CurrentUser = {
 
 type Props = {
   currentUser: CurrentUser;
-  fallbackBasePrice: number | null;
   initialSnapshot: ConfigurationSnapshot;
   mode: "demo" | "production";
 };
@@ -83,7 +83,7 @@ function FormActions({ busy, disabled, label = "Guardar cambios" }: { busy: bool
   );
 }
 
-export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSnapshot, mode }: Props) {
+export function ConfigurationConsole({ currentUser, initialSnapshot, mode }: Props) {
   const [state, setState] = useState(initialSnapshot);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -128,6 +128,8 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
     const form = new FormData(event.currentTarget);
     void mutate("updateGeneral", {
       name: value(form, "name"),
+      descriptor: value(form, "descriptor"),
+      country: value(form, "country"),
       phone: value(form, "phone"),
       whatsapp: value(form, "whatsapp"),
       email: value(form, "email"),
@@ -145,6 +147,10 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
       checkInFrom: value(form, "checkInFrom"),
       checkInUntil: value(form, "checkInUntil"),
       checkOutUntil: value(form, "checkOutUntil"),
+      courtesyCheckoutUntil: value(form, "courtesyCheckoutUntil"),
+      courtesyRequiresApproval: true,
+      breakfastFrom: value(form, "breakfastFrom"),
+      breakfastUntil: value(form, "breakfastUntil"),
       quietHoursFrom: value(form, "quietHoursFrom"),
       quietHoursUntil: value(form, "quietHoursUntil"),
     }, "Horarios operativos actualizados.");
@@ -163,6 +169,8 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
       cancellation: value(form, "cancellation"),
       minors: value(form, "minors"),
       pets: value(form, "pets"),
+      guestPetsAllowed: false,
+      residentPetsDisclosure: value(form, "residentPetsDisclosure"),
       smoking: value(form, "smoking"),
       quietHours: value(form, "quietHours"),
     }, "Políticas actualizadas.");
@@ -258,7 +266,7 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
       .reduce((total, bed) => total + (bed.quantity * bed.capacity), 0);
     return capacity >= room.capacity;
   });
-  const policyTextConfigured = Boolean(policies && Object.values(policies).every((text) => text.trim().length > 0));
+  const policyTextConfigured = Boolean(policies && [policies.cancellation, policies.minors, policies.pets, policies.smoking, policies.quietHours].every((text) => text.trim().length > 0));
   const teamConfigured = state.profiles.some((profile) => profile.status === "active" && profile.roleIds.length > 0);
   const progress = [
     { label: "Datos generales", status: general ? "configured" : "pending" },
@@ -274,13 +282,13 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
     <>
       <AdminPageHeader
         eyebrow="Control central"
-        title="Configuración del hostel"
+        title="Configuración de Casa Albor"
         description="Definí la operación real, el inventario y los accesos internos desde un único lugar protegido."
       />
 
       <section className="admin-access-summary" aria-label="Acceso actual">
         <div><span>{currentUser.displayName.slice(0, 1).toUpperCase()}</span><div><small>Sesión activa</small><strong>{currentUser.displayName}</strong></div></div>
-        <div><small>Rol</small><strong>{currentUser.roles.join(", ") || "Sin rol"}</strong></div>
+        <div><small>Rol</small><strong>{currentUser.roles.map((role) => ROLE_LABELS[role] ?? role).join(", ") || "Sin rol"}</strong></div>
         <div><small>Permisos efectivos</small><strong>{currentUser.permissions.length} de {state.permissions.length || currentUser.permissions.length}</strong></div>
         <span className={`admin-access-verdict ${ownerHasFullAccess ? "admin-access-verdict--ok" : ""}`}>{ownerHasFullAccess ? "Owner con acceso completo" : "Acceso según rol"}</span>
       </section>
@@ -301,7 +309,7 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
       <nav className="admin-config-index" aria-label="Secciones de configuración">
         <a href="#general">Información general</a>
         <a href="#horarios">Horarios</a>
-        <a href="#precio">Precio base</a>
+        <a href="#precio">Referencia legacy</a>
         <a href="#politicas">Políticas</a>
         <a href="#tipos">Tipos</a>
         <a href="#habitaciones">Habitaciones</a>
@@ -314,7 +322,9 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
         <SectionHeading eyebrow="Identidad y contacto" title="Información general" description="Datos operativos de Casa Albor. El sitio público consume únicamente los campos permitidos mediante su contrato de lectura." status={<SavedState saved={Boolean(general)} />} />
         <form className="admin-config-card" key={state.settings.general?.updatedAt ?? "general-empty"} onSubmit={submitGeneral}>
           <div className="admin-field-grid">
-            <label>Nombre comercial<input defaultValue={general?.name ?? "Casa Albor"} name="name" required /></label>
+            <label>Nombre comercial<input defaultValue={general?.name ?? CORE_GENERAL.name} name="name" maxLength={120} required /></label>
+            <label>Descriptor público<input defaultValue={general?.descriptor ?? CORE_GENERAL.descriptor} name="descriptor" maxLength={240} required /></label>
+            <label>País<input defaultValue={general?.country ?? CORE_GENERAL.country} name="country" maxLength={100} /></label>
             <label>Teléfono<input defaultValue={general?.phone ?? ""} name="phone" /></label>
             <label>WhatsApp<input defaultValue={general?.whatsapp ?? ""} name="whatsapp" /></label>
             <label>Correo de contacto<input defaultValue={general?.email ?? ""} name="email" type="email" /></label>
@@ -331,34 +341,39 @@ export function ConfigurationConsole({ currentUser, fallbackBasePrice, initialSn
         <SectionHeading eyebrow="Operación diaria" title="Horarios" description="Ventanas oficiales para recibir huéspedes, finalizar estadías y mantener horas de descanso." status={<SavedState saved={Boolean(schedules)} />} />
         <form className="admin-config-card" key={state.settings.schedules?.updatedAt ?? "schedules-empty"} onSubmit={submitSchedules}>
           <div className="admin-field-grid admin-field-grid--five">
-            <label>Check-in desde<input defaultValue={schedules?.checkInFrom ?? ""} name="checkInFrom" required type="time" /></label>
-            <label>Check-in hasta<input defaultValue={schedules?.checkInUntil ?? ""} name="checkInUntil" required type="time" /></label>
-            <label>Check-out hasta<input defaultValue={schedules?.checkOutUntil ?? ""} name="checkOutUntil" required type="time" /></label>
-            <label>Silencio desde<input defaultValue={schedules?.quietHoursFrom ?? ""} name="quietHoursFrom" required type="time" /></label>
-            <label>Silencio hasta<input defaultValue={schedules?.quietHoursUntil ?? ""} name="quietHoursUntil" required type="time" /></label>
+            <label>Check-in desde<input defaultValue={schedules?.checkInFrom ?? CORE_SCHEDULES.checkInFrom} name="checkInFrom" required type="time" /></label>
+            <label>Check-in hasta (pendiente, opcional)<input defaultValue={schedules?.checkInUntil ?? ""} name="checkInUntil" type="time" /></label>
+            <label>Check-out hasta<input defaultValue={schedules?.checkOutUntil ?? CORE_SCHEDULES.checkOutUntil} name="checkOutUntil" required type="time" /></label>
+            <label>Cortesía hasta, sólo con autorización<input defaultValue={schedules?.courtesyCheckoutUntil ?? CORE_SCHEDULES.courtesyCheckoutUntil} name="courtesyCheckoutUntil" required type="time" /></label>
+            <label>Desayuno desde<input defaultValue={schedules?.breakfastFrom ?? CORE_SCHEDULES.breakfastFrom} name="breakfastFrom" required type="time" /></label>
+            <label>Desayuno hasta<input defaultValue={schedules?.breakfastUntil ?? CORE_SCHEDULES.breakfastUntil} name="breakfastUntil" required type="time" /></label>
+            <label>Silencio desde<input defaultValue={schedules?.quietHoursFrom ?? CORE_SCHEDULES.quietHoursFrom} name="quietHoursFrom" required type="time" /></label>
+            <label>Silencio hasta<input defaultValue={schedules?.quietHoursUntil ?? CORE_SCHEDULES.quietHoursUntil} name="quietHoursUntil" required type="time" /></label>
           </div>
+          <p>La cortesía no extiende automáticamente ninguna estadía. Siempre requiere autorización operativa.</p>
           <FormActions busy={busy === "updateSchedules"} disabled={!canManageSettings || readOnly} />
         </form>
       </section>
 
       <section className="admin-config-section" id="precio">
-        <SectionHeading eyebrow="Tarifa de referencia" title="Precio base" description="Importe interno de referencia. No habilita ni publica reservas online." status={<SavedState saved={Boolean(price)} />} />
+        <SectionHeading eyebrow="Compatibilidad interna" title="Referencia legacy" description="No es una tarifa comercial canónica ni se publica. El motor por categoría, fecha y snapshots corresponde a T2." status={<SavedState saved={Boolean(price)} />} />
         <form className="admin-config-card admin-config-card--compact" key={state.settings.price?.updatedAt ?? "price-empty"} onSubmit={submitPrice}>
           <div className="admin-price-field">
-            <label>Precio base por noche (ARS)<input defaultValue={price?.amount ?? fallbackBasePrice ?? ""} min="1" name="amount" required step="1" type="number" /></label>
-            <div><small>Vista previa</small><strong>{formatCurrency(price?.amount ?? fallbackBasePrice ?? 0)}</strong><span>{price ? "Valor guardado en Supabase" : "Valor local de respaldo; confirmalo para guardarlo"}</span></div>
+            <label>Referencia interna legacy (ARS)<input defaultValue={price?.amount ?? ""} min="1" name="amount" required step="1" type="number" /></label>
+            <div><small>Referencia guardada</small><strong>{price ? formatCurrency(price.amount) : "Sin configurar"}</strong><span>No se utiliza como precio público.</span></div>
           </div>
           <FormActions busy={busy === "updatePrice"} disabled={!canManageSettings || readOnly} />
         </form>
       </section>
 
       <section className="admin-config-section" id="politicas">
-        <SectionHeading eyebrow="Reglas del alojamiento" title="Políticas" description="Textos internos listos para revisar antes de cualquier publicación futura." status={<SavedState saved={Boolean(policies)} />} />
+        <SectionHeading eyebrow="Reglas del alojamiento" title="Políticas" description="Estos campos son públicos. Cancelaciones pendientes de definición; no trasladar reglas wellness al alojamiento." status={<SavedState saved={Boolean(policies)} />} />
         <form className="admin-config-card" key={state.settings.policies?.updatedAt ?? "policies-empty"} onSubmit={submitPolicies}>
           <div className="admin-field-grid">
             <label className="admin-field--full">Cancelaciones<textarea defaultValue={policies?.cancellation ?? ""} name="cancellation" /></label>
             <label>Menores<textarea defaultValue={policies?.minors ?? ""} name="minors" /></label>
-            <label>Mascotas<textarea defaultValue={policies?.pets ?? ""} name="pets" /></label>
+            <label>Mascotas de huéspedes y visitantes<textarea defaultValue={policies?.pets ?? CORE_POLICIES.pets} name="pets" readOnly /></label>
+            <label className="admin-field--full">Mascotas propias de la casa (divulgación opcional)<textarea defaultValue={policies?.residentPetsDisclosure ?? ""} name="residentPetsDisclosure" maxLength={2000} /><small>No implica admitir mascotas de huéspedes. Dejar vacío hasta confirmar el texto.</small></label>
             <label>Tabaco<textarea defaultValue={policies?.smoking ?? ""} name="smoking" /></label>
             <label>Horas de silencio<textarea defaultValue={policies?.quietHours ?? ""} name="quietHours" /></label>
           </div>

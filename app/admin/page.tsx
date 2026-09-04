@@ -7,7 +7,7 @@ import { buildWellnessReadModel, wellnessLocalDate, wellnessLocalTime } from "./
 import { dashboardSnapshot, formatGuestName, isRoomOperationallyAvailable } from "./lib/operations";
 
 export default function AdminDashboardPage() {
-  const { state, mode } = useOperations();
+  const { checkOutUntil, state, mode, permissions } = useOperations();
   const snapshot = dashboardSnapshot(state);
   const wellness = buildWellnessReadModel(state);
   const nextWellnessSlot = wellness.currentSlot ?? wellness.upcomingSlot;
@@ -23,6 +23,12 @@ export default function AdminDashboardPage() {
     { label: "Habitaciones libres", value: snapshot.freeRooms, tone: "green" },
     { label: "Reservas pendientes", value: snapshot.pendingReservations, tone: "money" },
   ];
+
+  if (mode === "production" && !permissions.includes("reservations.read")) {
+    return <><AdminPageHeader eyebrow="Equipo Casa Albor" title="Acceso operativo" description="Sólo se muestran las funciones habilitadas para tu rol." />
+      {permissions.includes("housekeeping.read") ? <Link className="admin-button admin-button--primary" href="/admin/limpieza">Abrir limpieza</Link>
+        : <EmptyState title="Rol preparado" description="No hay funciones operativas habilitadas para este rol en T1." />}</>;
+  }
 
   return (
     <>
@@ -89,7 +95,7 @@ export default function AdminDashboardPage() {
 
       <div className="admin-dashboard-grid admin-dashboard-grid--equal">
         <section className="admin-panel">
-          <div className="admin-panel__heading"><div><p>Salidas de hoy</p><h2>Antes de las 10:00</h2></div><Link href="/admin/check-out">Ver todas</Link></div>
+          <div className="admin-panel__heading"><div><p>Salidas de hoy</p><h2>Hasta las {checkOutUntil}</h2></div><Link href="/admin/check-out">Ver todas</Link></div>
           {snapshot.departures.map((reservation) => { const person = guest(reservation.primaryGuestId); const assignedRoom = room(reservation.roomId); return <article className="admin-compact-record" key={reservation.id}><div><strong>{person ? formatGuestName(person.firstName, person.lastName) : reservation.code}</strong><span>{assignedRoom?.displayName} · saldo {formatCurrency(reservation.balance)}</span></div><Link className="admin-button admin-button--compact" href={`/admin/check-out?reservation=${reservation.id}`}>Check-out</Link></article>; })}
         </section>
         <section className="admin-panel">

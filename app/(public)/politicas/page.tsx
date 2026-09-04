@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHero } from "@/app/components/page-hero";
 import { getPublicSiteContent } from "@/app/lib/public-site-content";
+import { checkInLabel } from "@/app/lib/core-settings";
 
 export const metadata: Metadata = {
   title: "Información del alojamiento",
@@ -12,13 +13,15 @@ export const metadata: Metadata = {
 export default async function PoliciesPage() {
   const content = await getPublicSiteContent();
   const confirmedRules = [
-    ["Check-in", `De ${content.checkInFrom} a ${content.checkInUntil} hs.`],
+    ["Check-in", `${checkInLabel(content)} hs.`],
     ["Check-out", `Hasta las ${content.checkOutUntil} hs.`],
+    ["Cortesía de salida", `Hasta las ${content.courtesyCheckoutUntil} hs., exclusivamente con autorización operativa. No es automática.`],
+    ["Desayuno", `De ${content.breakfastFrom} a ${content.breakfastUntil} hs.`],
     [
       "Horario de descanso",
       `De ${content.quietHoursFrom} a ${content.quietHoursUntil} hs. ${content.policies.quietHours}`,
     ],
-    ["Reservas y cancelaciones", content.policies.cancellation],
+    ["Reservas y cancelaciones", content.policies.cancellation || "Condiciones pendientes de confirmar. Consultanos antes de reservar."],
     ["Menores", content.policies.minors],
     ["Mascotas", content.policies.pets],
     ["Fumar", content.policies.smoking],
@@ -42,6 +45,7 @@ export default async function PoliciesPage() {
           ))}
         </div>
         <div className="shell legal-notice">
+          {content.policies.residentPetsDisclosure ? <p>{content.policies.residentPetsDisclosure}</p> : null}
           <strong>¿Necesitás confirmar una condición antes de reservar?</strong>
           <p>Consultanos directamente para recibir información aplicable a tu estadía.</p>
           <Link className="text-link" href="/contacto">Ir a contacto <span aria-hidden="true">→</span></Link>

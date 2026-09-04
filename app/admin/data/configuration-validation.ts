@@ -1,40 +1,14 @@
 import { z } from "zod";
+import { generalSettingsSchema, scheduleSettingsSchema, policySettingsSchema } from "../../lib/core-settings.ts";
+export { generalSettingsSchema, scheduleSettingsSchema, policySettingsSchema };
 
 const trimmed = (maximum: number) => z.string().trim().max(maximum);
 const required = (minimum: number, maximum: number) => z.string().trim().min(minimum).max(maximum);
-const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Ingresá un horario válido.");
 const uuid = z.string().uuid();
-
-export const generalSettingsSchema = z.object({
-  name: required(2, 120),
-  phone: trimmed(40),
-  whatsapp: trimmed(40),
-  email: z.union([z.literal(""), z.string().trim().email().max(160)]),
-  address: trimmed(180),
-  city: trimmed(100),
-  province: trimmed(100),
-  website: z.union([z.literal(""), z.string().trim().url().max(240)]),
-});
-
-export const scheduleSettingsSchema = z.object({
-  checkInFrom: time,
-  checkInUntil: time,
-  checkOutUntil: time,
-  quietHoursFrom: time,
-  quietHoursUntil: time,
-});
 
 export const priceSettingsSchema = z.object({
   amount: z.coerce.number().int().positive().max(100_000_000),
   currency: z.literal("ARS"),
-});
-
-export const policySettingsSchema = z.object({
-  cancellation: trimmed(2_000),
-  minors: trimmed(2_000),
-  pets: trimmed(2_000),
-  smoking: trimmed(2_000),
-  quietHours: trimmed(2_000),
 });
 
 export const roomTypeInputSchema = z.object({

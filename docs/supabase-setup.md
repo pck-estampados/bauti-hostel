@@ -1,4 +1,10 @@
-# Configuración de Supabase para Fase 2
+# Archivo histórico: configuración de Supabase para Fase 2
+
+> No ejecutar este procedimiento histórico durante T1–T8. El desarrollo vigente
+> es exclusivamente local con `npm run db:local -- replay` y `npm run app:local -- dev`.
+> Ver README y el informe T1. Staging está diferido y producción no está autorizada.
+> Las referencias a claves privadas, cuatro migraciones y precios siguientes
+> documentan una etapa superada, no requisitos actuales.
 
 ## Estado de esta entrega
 

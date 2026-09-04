@@ -28,11 +28,11 @@ export default async function ContactPage() {
       />
       <section className="section page-section">
         <div className="shell contact-grid">
-          <a className="contact-card contact-card--primary" href={contactHref} target="_blank" rel="noreferrer">
+          {content.whatsapp ? <a className="contact-card contact-card--primary" href={contactHref} target="_blank" rel="noreferrer">
             <span>WhatsApp</span><strong>{content.whatsapp}</strong><p>Reservas y consultas</p><i aria-hidden="true">→</i>
-          </a>
+          </a> : <div className="contact-card"><span>WhatsApp</span><strong>Contacto pendiente de configuración</strong><p>No hay un número publicado por el momento.</p></div>}
           <a className="contact-card" href={brand.instagram.url} target="_blank" rel="noreferrer">
-            <span>Instagram</span><strong>{brand.instagram.handle}</strong><p>Novedades y contacto</p><i aria-hidden="true">→</i>
+            <span>Instagram</span><strong>Ver cuenta de contacto</strong><p>Novedades y contacto</p><i aria-hidden="true">→</i>
           </a>
           <div className="contact-card">
             <span>Dirección</span><strong>{content.address}</strong><p>{content.city}, Provincia de {content.province}</p>

@@ -6,7 +6,7 @@ const publicSupabaseSchema = z.object({
   url: z
     .string()
     .url("NEXT_PUBLIC_SUPABASE_URL debe ser una URL válida.")
-    .refine((value) => value.startsWith("https://"), "Supabase debe utilizar HTTPS."),
+    .refine((value) => value.startsWith("https://") || /^http:\/\/(127\.0\.0\.1|localhost):55421\/?$/.test(value), "Supabase debe utilizar HTTPS, excepto el proyecto local aislado en el puerto 55421."),
   publishableKey: z
     .string()
     .min(20, "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY no parece válida."),

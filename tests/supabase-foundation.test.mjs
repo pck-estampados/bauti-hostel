@@ -168,7 +168,7 @@ test("exposes only the typed public-site RPC without generic anonymous settings 
   assert.doesNotMatch(migration, /updated_by|audit_logs|user_roles/);
   assert.match(repository, /import "server-only"/);
   assert.match(repository, /persistSession: false/);
-  assert.match(repository, /\.rpc\("get_public_site_configuration"\)/);
+  assert.match(repository, /\.rpc\("get_public_site_configuration_v127"\)/);
   assert.doesNotMatch(repository, /createSupabaseAdminClient|SUPABASE_(?:SECRET|SERVICE_ROLE)/);
   assert.doesNotMatch(site, /NEXT_PUBLIC_BASE_PRICE_ARS|50_000|50000/);
 });

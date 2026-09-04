@@ -27,13 +27,13 @@ export const viewport: Viewport = {
 
 export async function generateMetadata(): Promise<Metadata> {
   const content = await getPublicSiteContent();
-  const title = `${brand.publicName} | Casa boutique en ${content.city}`;
-  const description = `${brand.descriptor} en ${publicFullAddress(content)}. Consultas por WhatsApp al ${content.whatsapp}. Desde ARS ${content.basePriceArs.toLocaleString("es-AR")} por habitación/noche.`;
+  const title = `${content.name} | Casa boutique en ${content.city}`;
+  const description = `${content.descriptor} en ${publicFullAddress(content)}. Consultá condiciones y tarifas según categoría y fechas.`;
 
   return {
     metadataBase: publicSiteUrl ? new URL(publicSiteUrl) : undefined,
-    applicationName: brand.publicName,
-    title: { default: title, template: `%s | ${brand.publicName}` },
+    applicationName: content.name,
+    title: { default: title, template: `%s | ${content.name}` },
     description,
     keywords: [
       `casa boutique en ${content.city}`,
@@ -43,7 +43,7 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       type: "website",
       locale: "es_AR",
-      siteName: brand.publicName,
+      siteName: content.name,
       title,
       description,
       url: publicSiteUrl,

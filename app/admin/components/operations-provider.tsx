@@ -1,5 +1,6 @@
 "use client";
 
+import { CORE_SCHEDULES } from "@/app/lib/core-settings";
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { createDemoOperationsState, DEMO_OPERATOR } from "../lib/demo-data";
 import {
@@ -41,6 +42,7 @@ type AppMode = "demo" | "production";
 
 type OperationsContextValue = {
   state: OperationsState;
+  checkOutUntil: string;
   actor: string;
   mode: AppMode;
   permissions: string[];
@@ -68,6 +70,7 @@ const OperationsContext = createContext<OperationsContextValue | null>(null);
 
 type ProviderProps = {
   children: ReactNode;
+  checkOutUntil?: string;
   actor?: string;
   mode?: AppMode;
   initialState?: OperationsState;
@@ -80,6 +83,7 @@ export function OperationsProvider({
   mode = "demo",
   initialState,
   permissions = [],
+  checkOutUntil = CORE_SCHEDULES.checkOutUntil,
 }: ProviderProps) {
   const [state, setState] = useState<OperationsState>(() => initialState ?? createDemoOperationsState());
 
@@ -113,6 +117,7 @@ export function OperationsProvider({
 
   const value = useMemo<OperationsContextValue>(() => ({
     state,
+    checkOutUntil,
     actor,
     mode,
     permissions,
@@ -136,7 +141,7 @@ export function OperationsProvider({
     transitionWellnessBooking: (input) => executeWellness("transitionWellnessBooking", input),
   // State updates use React's functional form; state itself is exposed in the context value.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [actor, mode, permissions, state]);
+  }), [actor, mode, permissions, state, checkOutUntil]);
 
   return <OperationsContext.Provider value={value}>{children}</OperationsContext.Provider>;
 }

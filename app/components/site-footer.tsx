@@ -26,7 +26,7 @@ export function SiteFooter({ content }: { content: PublicSiteContent }) {
               sizes="180px"
             />
           </Link>
-          <p className="site-footer__descriptor">{brand.descriptor}</p>
+          <p className="site-footer__descriptor">{content.descriptor}</p>
           <p>Una estadía cálida y cercana en {content.city}, con habitaciones privadas y espacios para compartir.</p>
         </div>
 
@@ -43,10 +43,10 @@ export function SiteFooter({ content }: { content: PublicSiteContent }) {
           <p className="footer-title">Contacto</p>
           <div className="footer-links">
             <a href={contactHref} target="_blank" rel="noreferrer">
-              WhatsApp {content.whatsapp}
+              {content.whatsapp ? `WhatsApp ${content.whatsapp}` : "Consultar canales de contacto"}
             </a>
             <a href={brand.instagram.url} target="_blank" rel="noreferrer">
-              Instagram {brand.instagram.handle}
+              Instagram
             </a>
             <Link href="/ubicacion">{publicFullAddress(content)}</Link>
           </div>

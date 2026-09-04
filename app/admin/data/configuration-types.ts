@@ -1,39 +1,19 @@
 import type { RoomStatus } from "../lib/types";
+import type { z } from "zod";
+import type { generalSettingsSchema, scheduleSettingsSchema, policySettingsSchema } from "../../lib/core-settings";
 
 export type ProfileStatus = "pending" | "active" | "disabled";
 export type BedType = "single" | "double" | "bunk_single" | "crib" | "other";
 
-export type GeneralSettings = {
-  name: string;
-  phone: string;
-  whatsapp: string;
-  email: string;
-  address: string;
-  city: string;
-  province: string;
-  website: string;
-};
-
-export type ScheduleSettings = {
-  checkInFrom: string;
-  checkInUntil: string;
-  checkOutUntil: string;
-  quietHoursFrom: string;
-  quietHoursUntil: string;
-};
+export type GeneralSettings = z.infer<typeof generalSettingsSchema>;
+export type ScheduleSettings = z.infer<typeof scheduleSettingsSchema>;
 
 export type PriceSettings = {
   amount: number;
   currency: "ARS";
 };
 
-export type PolicySettings = {
-  cancellation: string;
-  minors: string;
-  pets: string;
-  smoking: string;
-  quietHours: string;
-};
+export type PolicySettings = z.infer<typeof policySettingsSchema>;
 
 export type StoredSetting<T> = {
   value: T;

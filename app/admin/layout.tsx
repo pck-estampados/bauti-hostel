@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getPublicSiteContent } from "@/app/lib/public-site-content";
 import { requireStaffSession } from "@/app/lib/auth/staff-session";
 import { assertProductionEnvironment, getAppMode } from "@/app/lib/config/env";
 import { createSupabaseServerClient } from "@/app/lib/supabase/server";
@@ -30,9 +31,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const user = await requireStaffSession("/admin");
   const repository = new SupabaseOperationsRepository(await createSupabaseServerClient());
   const initialState = await repository.loadSnapshot();
+  const content = await getPublicSiteContent();
 
   return (
-    <OperationsProvider actor={user.displayName} mode="production" initialState={initialState} permissions={user.permissions}>
+    <OperationsProvider actor={user.displayName} checkOutUntil={content.checkOutUntil} mode="production" initialState={initialState} permissions={user.permissions}>
       <AdminShell mode="production" userName={user.displayName} userRoles={user.roles}>{children}</AdminShell>
     </OperationsProvider>
   );

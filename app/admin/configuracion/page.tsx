@@ -7,13 +7,11 @@ import { createSupabaseServerClient } from "@/app/lib/supabase/server";
 
 export default async function ConfigurationPage() {
   const mode = getAppMode();
-  const fallbackPrice = Number(process.env.NEXT_PUBLIC_BASE_PRICE_ARS);
 
   if (mode === "demo") {
     return (
       <ConfigurationConsole
         currentUser={{ id: "demo", displayName: "Recepción de prueba", roles: ["demo"], permissions: [] }}
-        fallbackBasePrice={Number.isFinite(fallbackPrice) ? fallbackPrice : null}
         initialSnapshot={emptyConfigurationSnapshot()}
         mode="demo"
       />
@@ -21,13 +19,15 @@ export default async function ConfigurationPage() {
   }
 
   const currentUser = await requireStaffSession("/admin/configuracion");
+  if (!currentUser.permissions.includes("settings.read")) {
+    return <p role="status">Tu rol no tiene acceso a la configuración.</p>;
+  }
   const repository = new SupabaseConfigurationRepository(await createSupabaseServerClient());
   const initialSnapshot = await repository.loadSnapshot();
 
   return (
     <ConfigurationConsole
       currentUser={currentUser}
-      fallbackBasePrice={Number.isFinite(fallbackPrice) ? fallbackPrice : null}
       initialSnapshot={initialSnapshot}
       mode="production"
     />

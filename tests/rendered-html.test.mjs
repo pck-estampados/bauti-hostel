@@ -97,9 +97,9 @@ test("renders the real Casa Albor public home", async () => {
   assert.match(html, /Descansá cerca/);
   assert.match(html, /Consultar por WhatsApp/);
   assert.match(html, /Uruguayana 235/);
-  assert.match(html, /Desde[\s\S]{0,20}(?:\$|ARS)[\s\S]{0,10}60\.000[\s\S]{0,40}por habitaci.n\/noche/i);
-  assert.match(html, /5491128064272/);
-  assert.doesNotMatch(html, /50\.000|50000/);
+  assert.match(html, /Consultá la tarifa según categoría y fechas/);
+  assert.doesNotMatch(html, /wa\.me\/\?text=/);
+  assert.doesNotMatch(html, /50\.000|50000|60\.000|60000|priceRange/);
   assert.match(html, /Consultá si hay una opción para tu estadía/);
   assert.match(html, /Cómo llegar/);
   assert.doesNotMatch(
@@ -156,11 +156,10 @@ test("keeps the availability handoff transparent", async () => {
   assert.equal(response.status, 200);
   assert.match(html, /Consulta lista/);
   assert.match(html, /10 de agosto de 2026/);
-  assert.match(html, /Consultar disponibilidad por WhatsApp/);
-  assert.match(html, /Fecha%20de%20ingreso%3A%2010%2F08%2F2026/);
-  assert.match(html, /Nombre%3A%20Daniel/);
-  assert.match(html, /Cantidad%20de%20hu%C3%A9spedes%3A%202/);
-  assert.match(html, /wa\.me\/5491128064272/);
+  assert.match(html, /Ver canales de contacto/);
+  assert.match(html, /WhatsApp está pendiente de configuración/);
+  assert.match(html, /Daniel/);
+  assert.doesNotMatch(html, /wa\.me\//);
   assert.doesNotMatch(html, /Reserva confirmada|Pago aprobado/);
 });
 
@@ -168,19 +167,23 @@ test("renders public schedules and policies from the safe source with documented
   const [locationResponse, policiesResponse, publicContentSource] = await Promise.all([
     render("/ubicacion"),
     render("/politicas"),
-    readFile(new URL("../app/lib/public-site-content.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/core-settings.ts", import.meta.url), "utf8"),
   ]);
   const locationHtml = await locationResponse.text();
   const policiesHtml = await policiesResponse.text();
 
   assert.equal(locationResponse.status, 200);
   assert.equal(policiesResponse.status, 200);
-  assert.match(locationHtml, /08:00[\s\S]{0,40}a[\s\S]{0,40}22:00/);
+  assert.match(locationHtml, /desde las 15:00/);
   assert.match(policiesHtml, /Horario de descanso[\s\S]{0,120}De \d{2}:\d{2} a \d{2}:\d{2}/);
   assert.match(publicContentSource, /quietHoursFrom: "23:00"/);
   assert.match(publicContentSource, /quietHoursUntil: "08:00"/);
-  assert.match(locationHtml, /rel="canonical" href="http:\/\/localhost:3000\/ubicacion"/);
-  assert.match(policiesHtml, /Las mascotas se admiten/);
+  assert.match(locationHtml, /rel="canonical" href="http:\/\/(?:localhost|127\.0\.0\.1):3000\/ubicacion"/);
+  assert.match(policiesHtml, /No se admiten mascotas de huéspedes ni visitantes/);
+  assert.match(policiesHtml, /No es automática/);
+  assert.match(policiesHtml, /11:00/);
+  assert.match(policiesHtml, /12:00/);
+  assert.match(policiesHtml, /Desayuno[\s\S]{0,100}08:00 a 10:00/);
   assert.doesNotMatch(
     locationHtml + policiesHtml,
     /Application error|Internal Server Error|stack trace/i,
@@ -197,11 +200,11 @@ test("publishes a public-only sitemap and protective robots rules", async () => 
 
   assert.equal(sitemapResponse.status, 200);
   assert.equal(robotsResponse.status, 200);
-  assert.match(sitemapXml, /http:\/\/localhost:3000\/contacto/);
+  assert.match(sitemapXml, /http:\/\/(?:localhost|127\.0\.0\.1):3000\/contacto/);
   assert.doesNotMatch(sitemapXml, /\/admin|\/acceso-interno/);
   assert.match(robotsTxt, /Disallow: \/admin/);
   assert.match(robotsTxt, /Disallow: \/acceso-interno/);
-  assert.match(robotsTxt, /Sitemap: http:\/\/localhost:3000\/sitemap.xml/);
+  assert.match(robotsTxt, /Sitemap: http:\/\/(?:localhost|127\.0\.0\.1):3000\/sitemap.xml/);
 });
 
 test("server-renders the complete configuration experience without enabling writes in demo mode", async () => {

@@ -5,10 +5,12 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useOperations } from "./operations-provider";
+import { ROLE_LABELS } from "@/app/lib/core-settings";
 import { brand } from "@/app/lib/brand";
 
 const navigation = [
   { href: "/admin", label: "Resumen", code: "HO" },
+  { href: "/admin/limpieza", label: "Limpieza", code: "LI" },
   { href: "/admin/operacion", label: "Operación", code: "OP" },
   { href: "/admin/experiencias", label: "Experiencias", code: "EX" },
   { href: "/admin/habitaciones", label: "Habitaciones", code: "HA" },
@@ -23,9 +25,17 @@ const navigation = [
 
 function AdminNavigation({ mobile = false }: { mobile?: boolean }) {
   const pathname = usePathname();
+  const { permissions, mode } = useOperations();
+  const required: Record<string, string> = {
+    "/admin/limpieza": "housekeeping.read", "/admin/operacion": "reservations.read",
+    "/admin/experiencias": "experiences.read", "/admin/habitaciones": "rooms.read",
+    "/admin/huespedes/actuales": "guests.read", "/admin/reservas": "reservations.read",
+    "/admin/calendario": "reservations.read", "/admin/caja": "payments.read",
+    "/admin/notas": "notes.read", "/admin/galeria": "media.read", "/admin/configuracion": "settings.read",
+  };
   return (
     <nav className={mobile ? "admin-mobile-nav" : "admin-nav"} aria-label="Navegación de administración">
-      {navigation.map((item) => {
+      {navigation.filter((item) => mode === "demo" || !required[item.href] || permissions.includes(required[item.href])).map((item) => {
         const current = item.href === "/admin" ? pathname === item.href : pathname.startsWith(item.href);
         return (
           <Link href={item.href} key={item.href} aria-current={current ? "page" : undefined}>
@@ -80,7 +90,7 @@ export function AdminShell({
           </div>
           <div className="admin-user">
             <span>{userName.slice(0, 1).toUpperCase()}</span>
-            <div><strong>{userName}</strong><small>{mode === "demo" ? "Recepción · demo" : userRoles.join(", ") || "Equipo interno"}</small></div>
+            <div><strong>{userName}</strong><small>{mode === "demo" ? "Recepción · demo" : userRoles.map((role) => ROLE_LABELS[role] ?? role).join(", ") || "Equipo interno"}</small></div>
           </div>
         </header>
 

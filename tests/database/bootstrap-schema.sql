@@ -3,12 +3,12 @@ begin read only;
 do $$
 declare t record; n bigint;
 begin
-  if (select count(*) from supabase_migrations.schema_migrations) <> 13 then
-    raise exception 'Expected 13 applied repository migrations';
+  if (select count(*) from supabase_migrations.schema_migrations) <> 14 then
+    raise exception 'Expected 14 applied repository migrations';
   end if;
-  if (select count(*) from public.roles) <> 5
+  if (select count(*) from public.roles) <> 6
     or (select count(*) from public.permissions) <> 26
-    or (select count(*) from public.role_permissions) <> 65
+    or (select count(*) from public.role_permissions) <> 68
     or (select count(*) from public.room_services) <> 6 then
     raise exception 'Structural seed mismatch';
   end if;
@@ -18,20 +18,19 @@ begin
     raise exception 'Media bucket contract mismatch';
   end if;
   for t in select tablename from pg_tables where schemaname='public'
-    and tablename not in ('roles','permissions','role_permissions','room_services','audit_logs') loop
+    and tablename not in ('roles','permissions','role_permissions','room_services','audit_logs','settings') loop
     execute format('select count(*) from public.%I', t.tablename) into n;
     if n <> 0 then raise exception 'Bootstrap contains non-structural rows: %', t.tablename; end if;
   end loop;
-  if (select count(*) from public.audit_logs) <> 4 or exists (
-    select 1 from public.audit_logs a
-    where a.actor_id is not null or a.table_name <> 'role_permissions' or a.action <> 'insert'
-      or not exists (
-        select 1 from public.roles r cross join public.permissions p
-        where r.id::text = a.new_values->>'role_id' and r.code='owner'
-          and p.id::text = a.new_values->>'permission_id'
-          and p.code in ('media.read','media.manage','experiences.read','experiences.manage')
-      )
-  ) then raise exception 'Unexpected bootstrap audit records'; end if;
+  if (select count(*) from public.settings) <> 3 then raise exception 'Expected three canonical settings'; end if;
+  if exists (select 1 from public.audit_logs where actor_id is not null
+    or table_name not in ('role_permissions','roles','settings')) then
+    raise exception 'Unexpected bootstrap audit actor or table';
+  end if;
+  if exists (select 1 from public.audit_logs where table_name='settings'
+    and (coalesce(old_values,'{}') - 'key' <> '{}'::jsonb or coalesce(new_values,'{}') - 'key' <> '{}'::jsonb)) then
+    raise exception 'Settings audit must contain only keys';
+  end if;
   if exists (select 1 from auth.users) or exists (select 1 from storage.objects)
     or exists (select 1 from private.operation_rate_limits) then
     raise exception 'Bootstrap contains test users, objects or rate-limit records';
@@ -91,5 +90,5 @@ begin
   end if;
 end;
 $$;
-select 'PASS: 13 migrations; structural seeds 5/26/65/6; 31 public tables with RLS; business/auth/media empty; critical grants/constraints/bucket';
+select 'PASS: 14 migrations; structural seeds 6/26/68/6 plus 3 canonical settings; 31 public tables with RLS; business/auth/media empty; critical grants/constraints/bucket';
 rollback;

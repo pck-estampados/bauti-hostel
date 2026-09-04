@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { checkInLabel } from "@/app/lib/core-settings";
 import { PageHero } from "@/app/components/page-hero";
 import { getPublicSiteContent } from "@/app/lib/public-site-content";
 import {
@@ -46,7 +47,7 @@ export default async function LocationPage() {
           <div className="location-copy">
             <p className="eyebrow">Dirección</p>
             <h2>{fullAddress}</h2>
-            <p>El check-in se realiza de {content.checkInFrom} a {content.checkInUntil} hs. Coordiná tu llegada antes de viajar.</p>
+            <p>El check-in se realiza {checkInLabel(content)} hs. Coordiná tu llegada antes de viajar.</p>
             <div className="stacked-actions">
               <a className="button button--dark" href={mapsHref(fullAddress)} target="_blank" rel="noreferrer">Cómo llegar</a>
               <a className="button button--ghost" href={contactHref} target="_blank" rel="noreferrer">Consultar por WhatsApp</a>

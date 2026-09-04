@@ -187,6 +187,65 @@ function aclTests() {
   console.log(sql(statements.join("\n")).split(/\r?\n/).filter((line) => line.startsWith("PASS:")).join("\n"));
 }
 
+
+function coreModelTests() {
+  const sections = ["begin;", helpers, fixtures, `
+    insert into auth.users(id,email) values ('${uid(41)}','cleaning@bootstrap.invalid'),
+      ('${uid(42)}','bar@bootstrap.invalid'), ('${uid(43)}','management@bootstrap.invalid');
+    update public.profiles set status='active' where id in ('${uid(41)}','${uid(42)}','${uid(43)}');
+    insert into public.user_roles(user_id,role_id)
+      select '${uid(41)}'::uuid,id from public.roles where code='housekeeping'
+      union all select '${uid(42)}'::uuid,id from public.roles where code='bar'
+      union all select '${uid(43)}'::uuid,id from public.roles where code='admin';
+    update public.rooms set cleaning_note='Instrucción mínima',status_note='PRIVATE-STATUS',
+      internal_notes='PRIVATE-ROOM',status='pending_cleaning' where id='${room}';
+  `];
+  for (const [role, count] of [["owner",26],["admin",24],["housekeeping",2],["bar",0],["reception",13],["maintenance",3]]) {
+    sections.push(check(`(select count(*) from public.role_permissions rp join public.roles r on r.id=rp.role_id where r.code='${role}')=${count}`, `T1 role ${role} exact permissions`));
+  }
+  sections.push(identity(41), check("private.is_active_staff()", "cleaning active staff"));
+  for (const table of ["rooms","housekeeping_tasks","guests","reservations","payments","settings","internal_notes","maintenance_issues","activity_logs","audit_logs"]) {
+    sections.push(check(`(select count(*) from public.${table})=0`, `cleaning cannot read ${table}`));
+  }
+  sections.push(check("(select count(*) from public.get_housekeeping_room_state())=1", "cleaning minimal projection"),
+    check("(select cleaning_note from public.get_housekeeping_room_state())='Instrucción mínima'", "dedicated cleaning note"),
+    check(`not (select to_jsonb(r)::text ~ 'PRIVATE|TEST-DOCUMENT|TEST-FIRST|TEST-HOUSEKEEPING' from public.get_housekeeping_room_state() r)`, "no sensitive projection fields"),
+    `select public.set_room_operational_status('${room}','cleaning','Flujo local de prueba');`,
+    `select public.set_room_operational_status('${room}','clean','Flujo local de prueba');`,
+    `select public.set_room_operational_status('${room}','ready','Flujo local de prueba');`,
+    expectError(`select public.set_room_operational_status('${room}','maintenance','Prohibido')`,"42501"),
+    identity(1), `reset role; update public.rooms set status='maintenance' where id='${room}';`, identity(41),
+    expectError(`select public.set_room_operational_status('${room}','pending_cleaning','Prohibido')`,"42501"),
+    identity(42), check("private.is_active_staff()", "bar active but no business capabilities"));
+  for (const table of ["rooms","guests","reservations","payments","settings","internal_notes","housekeeping_tasks"]) {
+    sections.push(check(`(select count(*) from public.${table})=0`, `bar cannot read ${table}`));
+  }
+  for (const user of [2,3,4,42]) sections.push(identity(user), expectError("select * from public.get_housekeeping_room_state()","42501"));
+  sections.push(identity(43), check("private.has_permission('settings.manage') and private.has_permission('media.manage') and private.has_permission('experiences.manage')", "Gerencia operational capabilities"),
+    check("not private.has_permission('rbac.manage') and not private.has_permission('audit.read')", "security administration stays owner"),
+    identity(1), check("private.has_permission('rbac.manage') and private.has_permission('audit.read')", "owner complete"),
+    check("(select value->>'name' from public.settings where key='hostel.general')='Casa Albor'", "canonical name"),
+    check("(select value->>'checkInFrom'='15:00' and value->>'checkOutUntil'='11:00' and value->>'courtesyCheckoutUntil'='12:00' and value->'courtesyRequiresApproval'='true'::jsonb and value->>'breakfastFrom'='08:00' and value->>'breakfastUntil'='10:00' from public.settings where key='hostel.schedules')", "canonical schedules"),
+    expectError(`update public.settings set value=jsonb_set(value,'{guestPetsAllowed}','true') where key='hostel.policies'`,"22023"),
+    expectError(`update public.settings set value=jsonb_set(value,'{courtesyRequiresApproval}','false') where key='hostel.schedules'`,"22023"),
+    expectError(`update public.settings set value=jsonb_set(value,'{checkInFrom}','"25:00"') where key='hostel.schedules'`,"22023"),
+    `update public.settings set value=jsonb_set(value,'{residentPetsDisclosure}','"Texto local de prueba, no mascotas admitidas."') where key='hostel.policies';`,
+    check(`not exists(select 1 from public.audit_logs where table_name='settings' and coalesce(new_values::text,'') ~ 'Texto local|value|updated_by')`, "redacted settings audit"),
+    "reset role; set local role anon;",
+    expectError("select value from public.settings","42501"),
+    check("(select hostel_name='Casa Albor' and check_in_from='15:00' and check_out_until='11:00' and courtesy_requires_approval and pets_policy='No se admiten mascotas de huéspedes ni visitantes.' from public.get_public_site_configuration_v127())", "anon canonical typed contract"),
+    check("(select base_price_ars is null from public.get_public_site_configuration())", "legacy RPC price never public"),
+    check(`not (select to_jsonb(c) ?| array['updated_by','email','website','value','pricing','base_price_ars','roles'] from public.get_public_site_configuration_v127() c)`, "public strict allowlist"),
+    expectError("select * from public.get_housekeeping_room_state()","42501"),
+    "reset role;",
+    `update public.reservations set status='paid' where id='${reservation}';`,
+    identity(1), check(`(select lifecycle_status from public.reservation_lifecycle where reservation_id='${reservation}')='confirmed'`, "paid does not mean arrived"),
+    check(`(select paid_total from public.reservation_financials where reservation_id='${reservation}')=0`, "ledger not legacy enum determines paid amount"),
+    "reset role; set local role anon;", expectError("select * from public.reservation_lifecycle","42501"),
+    "reset role; select 'PASS: T1 canonical settings, public allowlist, DB validation, six-role matrix, cleaning/Bar minimum privilege, lifecycle/ledger separation'; rollback;");
+  console.log(sql(sections.join("\n")).split(/\r?\n/).filter((line) => line.startsWith("PASS:")).join("\n"));
+}
+
 async function authTests() {
   const { url, key } = localPublicApi();
   // Generated inside LOCAL Postgres, ephemeral, never embedded in SQL/logs/files.
@@ -223,6 +282,10 @@ async function authTests() {
   assert.equal(signedOut.error === null,true,"local Auth logout");
   const revoked = await client.auth.refreshSession({ refresh_token: refreshToken });
   assert.equal(revoked.error !== null,true,"logged-out refresh token must be rejected");
+  if (process.env.T1_APP_TESTS === "1") {
+    const { verifyStaffApp } = await import("./app-access.mjs");
+    await verifyStaffApp(url, key, credential);
+  }
   console.log("PASS: real LOCAL Auth login, active owner via JWT/RLS, refresh, logout and refresh revocation");
 }
 
@@ -250,6 +313,7 @@ async function race(statement1, statement2, label, expectedError) {
 export async function testDatabase() {
   console.log(sql(readFileSync(join(root, "tests/database/bootstrap-schema.sql"), "utf8")));
   aclTests();
+  coreModelTests();
   functionalTests(); // Entire fixture and all role/permission changes ROLLBACK.
   console.log(sql(readFileSync(join(root, "tests/database/bootstrap-schema.sql"), "utf8")));
   // Cross-connection tests require committed LOCAL fixtures. Always reset in

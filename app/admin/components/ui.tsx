@@ -9,7 +9,7 @@ const roomLabels: Record<RoomStatus, string> = {
 
 const reservationLabels: Record<ReservationStatus, string> = {
   inquiry: "Consulta", pending: "Pendiente", pending_deposit: "Pendiente de seña", confirmed: "Confirmada",
-  partially_paid: "Parcialmente pagada", paid: "Pagada", checked_in: "Check-in realizado", accommodated: "Alojado",
+  partially_paid: "Confirmada (estado legacy)", paid: "Confirmada (estado legacy)", checked_in: "Check-in realizado", accommodated: "Alojado",
   checked_out: "Check-out realizado", completed: "Finalizada", cancelled: "Cancelada", no_show: "No show", rejected: "Rechazada",
 };
 

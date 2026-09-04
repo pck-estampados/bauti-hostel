@@ -1,4 +1,5 @@
 import type { PublicSiteContent } from "@/app/lib/public-site-types";
+import { checkInLabel } from "./core-settings.ts";
 
 export const confirmedAmenities = [
   {
@@ -83,15 +84,15 @@ export function buildFaqs(content: PublicSiteContent) {
   return [
   {
     question: "¿A qué hora es el check-out?",
-    answer: `El check-out es hasta las ${content.checkOutUntil} hs.`,
+    answer: `El check-out es hasta las ${content.checkOutUntil} hs. La cortesía hasta las ${content.courtesyCheckoutUntil} requiere autorización operativa; no es automática.`,
   },
   {
     question: "¿Cuándo se puede realizar el check-in?",
-    answer: `El check-in se realiza de ${content.checkInFrom} a ${content.checkInUntil} hs.`,
+    answer: `El check-in se realiza ${checkInLabel(content)} hs.`,
   },
   {
     question: "¿El desayuno está incluido?",
-    answer: "Sí, el desayuno está incluido.",
+    answer: `Sí, de ${content.breakfastFrom} a ${content.breakfastUntil} hs.`,
   },
   {
     question: "¿Hay WiFi?",
@@ -111,12 +112,15 @@ export function buildFaqs(content: PublicSiteContent) {
   },
   {
     question: "¿Se puede fumar?",
-    answer:
-      "Únicamente en espacios exteriores habilitados, como la entrada o el patio.",
+    answer: content.policies.smoking,
+  },
+  {
+    question: "¿Se admiten mascotas?",
+    answer: content.policies.pets,
   },
   {
     question: "¿Cómo puedo consultar disponibilidad?",
-    answer: `A través del formulario de la web o mediante WhatsApp al ${content.whatsapp}.`,
+    answer: content.whatsapp ? `A través del formulario de la web o mediante WhatsApp al ${content.whatsapp}.` : "Los canales de contacto están pendientes de configuración.",
   },
   ] as const;
 }
@@ -131,6 +135,7 @@ export function formatArs(value: number) {
 
 export function whatsappHref(whatsapp: string, message: string) {
   const number = whatsapp.replace(/\D/g, "");
+  if (!number) return "/contacto";
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
 }
 
@@ -147,5 +152,5 @@ export function mapsEmbedHref(fullAddress: string) {
 }
 
 export function publicFullAddress(content: PublicSiteContent) {
-  return `${content.address}, ${content.city}, ${content.province}, Argentina`;
+  return `${content.address}, ${content.city}, ${content.province}, ${content.country}`;
 }

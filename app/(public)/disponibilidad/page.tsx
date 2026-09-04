@@ -61,9 +61,9 @@ export default async function AvailabilityPage({
                   <div><dt>Niños</dt><dd>{request.children}</dd></div>
                   <div><dt>Total</dt><dd>{totalGuests}</dd></div>
                 </dl>
-                <p>WhatsApp se abrirá con todos los datos ingresados. La disponibilidad y la tarifa se confirman en la conversación.</p>
+                <p>{content.whatsapp ? "WhatsApp se abrirá con todos los datos ingresados. La disponibilidad y la tarifa se confirman en la conversación." : "El canal de WhatsApp está pendiente de configuración. Esta consulta no se envió ni confirma una reserva."}</p>
                 <a className="button button--primary button--full" href={whatsappHref(content.whatsapp, message)} target="_blank" rel="noreferrer">
-                  Consultar disponibilidad por WhatsApp
+                  {content.whatsapp ? "Consultar disponibilidad por WhatsApp" : "Ver canales de contacto"}
                 </a>
               </>
             ) : (

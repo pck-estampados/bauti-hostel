@@ -202,9 +202,9 @@ test("publishes a public-only sitemap and protective robots rules", async () => 
   assert.equal(robotsResponse.status, 200);
   assert.match(sitemapXml, /http:\/\/(?:localhost|127\.0\.0\.1):3000\/contacto/);
   assert.doesNotMatch(sitemapXml, /\/admin|\/acceso-interno/);
-  assert.match(robotsTxt, /Disallow: \/admin/);
-  assert.match(robotsTxt, /Disallow: \/acceso-interno/);
-  assert.match(robotsTxt, /Sitemap: http:\/\/(?:localhost|127\.0\.0\.1):3000\/sitemap.xml/);
+  assert.match(robotsTxt, /^Disallow: \/\s*$/m);
+  assert.doesNotMatch(robotsTxt, /^Allow:|^Sitemap:/m);
+  assert.equal(robotsResponse.headers.get("x-robots-tag"), "noindex, nofollow");
 });
 
 test("server-renders the complete configuration experience without enabling writes in demo mode", async () => {

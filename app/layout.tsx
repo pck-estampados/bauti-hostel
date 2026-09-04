@@ -31,6 +31,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const description = `${content.descriptor} en ${publicFullAddress(content)}. Consultá condiciones y tarifas según categoría y fechas.`;
 
   return {
+    // Private development release; commercial indexing requires a separate approval.
+    robots: { index: false, follow: false },
     metadataBase: publicSiteUrl ? new URL(publicSiteUrl) : undefined,
     applicationName: content.name,
     title: { default: title, template: `%s | ${content.name}` },

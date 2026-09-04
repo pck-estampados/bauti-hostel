@@ -14,7 +14,8 @@
     "db:local": "node scripts/database-local.mjs",
     "test:db": "node scripts/database-local.mjs test",
     "lint": "eslint . --ignore-pattern .wrangler --ignore-pattern .vinext --ignore-pattern .npm-cache --ignore-pattern dist --ignore-pattern .next --ignore-pattern out --ignore-pattern outputs --ignore-pattern work",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:deployment": "node --experimental-strip-types --test tests/deployment-privacy.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.3",

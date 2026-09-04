@@ -10,12 +10,13 @@
     "build": "next build",
     "start": "next start",
     "app:local": "node scripts/app-local.mjs",
-    "test": "npm run build && node --experimental-strip-types --test tests/lodging.test.mjs tests/core-model.test.mjs tests/database-local-safety.test.mjs tests/media-gallery.test.mjs tests/payment-management.test.mjs tests/rendered-html.test.mjs tests/reservation-management.test.mjs tests/room-management.test.mjs tests/stay-operations.test.mjs tests/supabase-foundation.test.mjs tests/wellness-capacity.test.mjs",
+    "test": "npm run build && node --experimental-strip-types --test tests/lodging.test.mjs tests/core-model.test.mjs tests/database-local-safety.test.mjs tests/media-gallery.test.mjs tests/password-recovery.test.mjs tests/payment-management.test.mjs tests/rendered-html.test.mjs tests/reservation-management.test.mjs tests/room-management.test.mjs tests/stay-operations.test.mjs tests/supabase-foundation.test.mjs tests/wellness-capacity.test.mjs",
     "db:local": "node scripts/database-local.mjs",
     "test:db": "node scripts/database-local.mjs test",
     "lint": "eslint . --ignore-pattern .wrangler --ignore-pattern .vinext --ignore-pattern .npm-cache --ignore-pattern dist --ignore-pattern .next --ignore-pattern out --ignore-pattern outputs --ignore-pattern work",
     "typecheck": "tsc --noEmit",
-    "test:deployment": "node --experimental-strip-types --test tests/deployment-privacy.test.mjs"
+    "test:deployment": "node --experimental-strip-types --test tests/deployment-privacy.test.mjs",
+    "test:recovery": "node --test tests/password-recovery.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.3",

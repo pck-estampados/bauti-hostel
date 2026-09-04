@@ -9,18 +9,26 @@ import { brand } from "@/app/lib/brand";
 export default function RecoverAccessPage() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setSubmitting(true);
+    setError("");
     try {
       const supabase = createSupabaseBrowserClient();
-      await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/callback?returnTo=/actualizar-clave`,
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
+      const recoveryUrl = new URL("/auth/callback", siteUrl);
+      recoveryUrl.searchParams.set("flow", "recovery");
+      const { error: recoveryError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: recoveryUrl.toString(),
       });
-    } finally {
+      if (recoveryError) throw recoveryError;
       setSent(true);
+    } catch {
+      setError("No pudimos enviar el enlace. Esperá unos minutos e intentá nuevamente.");
+    } finally {
       setSubmitting(false);
     }
   }
@@ -34,6 +42,7 @@ export default function RecoverAccessPage() {
         {sent ? <p>Si la cuenta existe, enviamos un enlace seguro a ese correo.</p> : (
           <form onSubmit={submit}>
             <label>Correo electrónico<input autoComplete="email" required type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+            {error ? <p className="staff-auth__error" role="alert">{error}</p> : null}
             <button disabled={submitting} type="submit">{submitting ? "Enviando…" : "Enviar enlace"}</button>
           </form>
         )}

@@ -45,7 +45,8 @@ after(async () => {
 
 const routes = ["/", "/habitaciones", "/servicios", "/galeria", "/ubicacion",
   "/preguntas-frecuentes", "/contacto", "/politicas", "/disponibilidad",
-  "/reservar", "/privacidad", "/terminos", "/acceso-interno"];
+  "/reservar", "/privacidad", "/terminos", "/acceso-interno",
+  "/recuperar-acceso", "/actualizar-clave"];
 
 for (const route of routes) {
   test(`real private deployment: ${route} renders with noindex`, async () => {

@@ -13,6 +13,7 @@ function StaffLoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const passwordUpdated = searchParams.get("password") === "updated";
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -47,6 +48,7 @@ function StaffLoginForm() {
         <p className="staff-auth__eyebrow">Acceso privado</p>
         <h1 id="staff-login-title">Ingresar al panel</h1>
         <p>Usá la cuenta de empleado que fue creada por un administrador.</p>
+        {passwordUpdated ? <p role="status">Contraseña actualizada. Ingresá con tu nueva clave.</p> : null}
         <form onSubmit={submit}>
           <label>Correo electrónico<input autoComplete="email" inputMode="email" required type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
           <label>Contraseña<input autoComplete="current-password" minLength={8} required type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>

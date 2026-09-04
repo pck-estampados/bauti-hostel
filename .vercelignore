@@ -1,0 +1,21 @@
+# Upload only application sources and the native Next.js build configuration.
+# Local environments, database evidence, logs and migrations never leave this PC.
+/*
+!app
+!public
+!package.json
+!package-lock.json
+!next.config.ts
+!postcss.config.mjs
+!tsconfig.json
+!proxy.ts
+!vercel.json
+!eslint.config.mjs
+!.nvmrc
+!.vercelignore
+
+# Defense in depth inside the allowed source directories.
+**/.env*
+**/*.log
+**/*.pem
+**/*.key

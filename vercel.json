@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "NEXT_PUBLIC_SITE_URL=\"https://${VERCEL_BRANCH_URL:-$VERCEL_URL}\" npm run build",
   "git": {
     "deploymentEnabled": false
   }

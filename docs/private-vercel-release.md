@@ -25,6 +25,13 @@ asignada/verificada, NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_PUBLISHABLE
 No secret/service-role. No guardar claves en archivos versionados ni usar
 `vercel env pull .env.local` para reemplazar configuración local.
 
+El build remoto toma el hostname HTTPS asignado por Vercel (URL de rama, o URL
+del deployment si no hay alias de rama). No se inventa un dominio previo al
+primer deployment. Después se registra la URL asignada en la variable Preview.
+`.vercelignore` limita la subida de la CLI a las fuentes de la aplicación y su
+configuración de build; excluye entornos, logs, snapshots, tests y migraciones.
+Antes de subir se comprueba el manifiesto con `vercel deploy --dry --json`.
+
 Validación focalizada, sin fixtures ni modo demo:
 
 ```powershell
